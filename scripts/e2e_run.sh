@@ -38,7 +38,7 @@ echo "==> preparing external state (MinIO bucket)"
 go run ./e2e/setup
 
 echo "==> starting quantum-app against real services"
-APP_LOG="$(mktemp -t quantum-app-e2e)"
+APP_LOG="$(mktemp "${TMPDIR:-/tmp}/quantum-app-e2e.XXXXXX")"
 bin/quantum-app --config config/e2e.yaml >"$APP_LOG" 2>&1 &
 APP_PID=$!
 trap 'kill "$APP_PID" 2>/dev/null || true; wait "$APP_PID" 2>/dev/null || true' EXIT

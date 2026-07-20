@@ -1,0 +1,62 @@
+# Production-like configuration for the E2E run: every backing service is
+# real (PostgreSQL primary + streaming replica, MySQL, Redis, MinIO, SMTP).
+# Ports match docker-compose.yml. Values can be overridden per-key with
+# NUCLEUS_* environment variables (e.g. NUCLEUS_DATABASES__DEFAULT__URL).
+
+host: "127.0.0.1"
+port: 58080
+log_level: info
+log_format: json
+
+database_default: default
+databases:
+  default:
+    url: "postgres://warehouse:warehouse@127.0.0.1:55442/warehouse?sslmode=disable"
+    max_open: 10
+  audit:
+    url: "mysql://warehouse:warehouse@127.0.0.1:53306/warehouse_audit"
+    max_open: 5
+
+# Sessions live in Redis (session_store: redis): the session cookie token is
+# the key suffix under session_redis_prefix (default "nucleus:sessions:").
+redis_url: "redis://127.0.0.1:56379/0"
+session_store: redis
+session_lifetime: 12h
+# E2E runs over plain http on loopback; production keeps the secure default.
+session_cookie_secure: false
+
+# Outbound mail over real SMTP (Mailpit in the compose stack).
+mail_driver: smtp
+smtp_host: "127.0.0.1"
+smtp_port: 51025
+mail_from: "warehouse@quantum-app.local"
+
+# Object storage on MinIO through the S3 provider.
+storage:
+  provider: s3
+  default: private
+  s3:
+    endpoint: "http://127.0.0.1:59000"
+    bucket: "warehouse"
+    region: "us-east-1"
+    access_key_id: "minioadmin"
+    secret_access_key: "minioadmin"
+    use_path_style: true
+
+# Transactional outbox on the default (PostgreSQL) database. The framework
+# starts the leasing dispatcher; the webhook bridge delivers every orders.*
+# event back to the app's /hooks/outbox endpoint, authenticated by header.
+outbox:
+  enabled: true
+  table_name: nucleus_outbox
+  lease_duration: 30s
+  max_retries: 5
+  retry_backoff: 1s
+  bridges:
+    - name: order-hooks
+      type: webhook
+      config:
+        url: "http://127.0.0.1:58080/hooks/outbox"
+        pattern: "orders.*"
+        headers:
+          X-Outbox-Token: "dev-outbox-token"

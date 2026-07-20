@@ -1,0 +1,28 @@
+# Binaries
+/bin/
+/quantum-app
+*.exe
+
+# Test artifacts
+*.out
+coverage.*
+
+# Local state
+*.db
+*.sqlite3
+.env
+.env.local
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Never commit a workspace file: this repo resolves the suite via the module
+# proxy at certified tags only (see README "Version policy"); CI fails if a
+# go.work exists in the tree.
+go.work
+go.work.sum

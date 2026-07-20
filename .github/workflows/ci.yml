@@ -1,0 +1,61 @@
+# CI for quantum-app — the external consumer of the Quantum suite.
+#
+# Version policy (OR-1): the suite is resolved from the Go module proxy at the
+# exact tags of the certified set pinned in go.mod. GOWORK=off is set globally
+# and the workspace guard fails the build if a go.work ever appears: a
+# workspace would silently override the certified pins with local checkouts.
+# The pins move only when a new suite set is certified — never ad hoc.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  GOWORK: "off"
+
+jobs:
+  build:
+    name: build · vet · unit tests · gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Workspace guard (no go.work, GOWORK empty/off)
+        run: ./scripts/check_no_workspace.sh
+      - name: Build
+        run: |
+          go build ./...
+          go build -o bin/quantum-app ./cmd/quantum-app
+      - name: Vet
+        run: go vet ./...
+      - name: Unit tests (E2E auto-skips without services)
+        run: go test ./...
+      - name: Suite manifest gate
+        run: ./scripts/check_suite_manifest.sh
+
+  e2e:
+    name: E2E (real app + real services in Docker)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Workspace guard (no go.work, GOWORK empty/off)
+        run: ./scripts/check_no_workspace.sh
+      - name: Start backing services (PostgreSQL primary + streaming replica, MySQL, Redis, MinIO, Mailpit)
+        run: docker compose up -d --wait
+      - name: Build the real app binary
+        run: go build -o bin/quantum-app ./cmd/quantum-app
+      - name: Run E2E suite against the real app
+        run: ./scripts/e2e_run.sh
+      - name: Service logs on failure
+        if: failure()
+        run: docker compose logs --tail 100
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

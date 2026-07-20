@@ -1,0 +1,326 @@
+# suite-manifest.yaml — the honest coverage map of quantum-app against the
+# certified Quantum set it pins.
+#
+# The DENOMINATOR is not defined here: it is generated from the inventories
+# the suite repos already publish, read from the module cache at the exact
+# tags in go.mod (see scripts/gen_suite_manifest.sh). Every denominator item
+# must resolve to exactly one classification below; the CI gate
+# (scripts/check_suite_manifest.sh) fails on unclassified items, on orphan
+# classifications (talking about surfaces the pinned inventories no longer
+# contain), on covered entries without evidence, and on pin drift.
+#
+# Matching: entries without '*' are exact item IDs and win over patterns;
+# patterns use '*' as "any characters" and apply first-match-wins in file
+# order — so specific rules go before catch-alls.
+#
+# Statuses:
+#   covered      executed by this app with E2E/test evidence (pointer given)
+#   not-covered  in reach of the prototype but not exercised (reason given)
+#   out-of-scope deliberately outside the prototype (reason given)
+
+suite: "1.7.2"
+pins:
+  quark: v1.3.2
+  nucleus: v1.3.3
+  orbit: v1.4.3
+
+sources:
+  quark: examples/superapp/apisurface.json (S7 surface manifest, 670 symbols)
+  nucleus: docs/reference/API_CONTRACT_INVENTORY.md (public package table)
+  orbit: contracts/baseline/api_exported_symbols.txt (frozen v1 surface)
+
+notes: >
+  The integration modules orbit/quarkbridge v0.3.3 and orbit/quarkdatasource
+  v0.2.5 publish no machine-readable inventory at their tags, so they cannot
+  enter the mechanical denominator; their execution is evidenced through the
+  covered orbit/datasource and quark items below (the panel E2E drives Data
+  Studio through quarkdatasource, and the live-feed E2E drives quarkbridge
+  onto the nucleus event bus). orbit's fleet leg (agent/server/proto) is
+  opt-in, not part of the in-process panel, and outside this prototype.
+
+classifications:
+  # ---- quark: surfaces this app calls directly (see evidence) -------------
+  - match: "quark:github.com/jcsvwinston/quark.New"
+    status: covered
+    evidence: "cmd/quantum-app/main.go (pgx + mysql + replica-routed clients); every E2E boots through it"
+  - match: "quark:github.com/jcsvwinston/quark.For"
+    status: covered
+    evidence: "internal/warehouse handlers; e2e/products_test.go, e2e/orders_test.go"
+  - match: "quark:github.com/jcsvwinston/quark.WithMaxOpenConns"
+    status: covered
+    evidence: "cmd/quantum-app/main.go (pool sizing on all three clients)"
+  - match: "quark:github.com/jcsvwinston/quark.WithReplicas"
+    status: covered
+    evidence: "cmd/quantum-app/main.go; e2e/replica_test.go (PostgreSQL streaming standby, pg_stat_replication asserted)"
+  - match: "quark:github.com/jcsvwinston/quark.WithMiddleware"
+    status: covered
+    evidence: "internal/warehouse/module.go (quarkbridge middleware); e2e/admin_test.go TestOrbitLiveFeed"
+  - match: "quark:github.com/jcsvwinston/quark.(*Client).Close"
+    status: covered
+    evidence: "cmd/quantum-app/main.go (deferred close of the three clients)"
+  - match: "quark:github.com/jcsvwinston/quark.(*Client).RegisterModel"
+    status: covered
+    evidence: "internal/warehouse/module.go Migrate (PG and MySQL registries)"
+  - match: "quark:github.com/jcsvwinston/quark.(*Client).MigrateRegistered"
+    status: covered
+    evidence: "internal/warehouse/module.go Migrate; schema exists on PG and MySQL in every E2E run"
+  - match: "quark:github.com/jcsvwinston/quark.(*Client).WithOptions"
+    status: covered
+    evidence: "internal/warehouse/module.go OnStart (bridged client derivation)"
+  - match: "quark:github.com/jcsvwinston/quark.(*Query[T]).Where"
+    status: covered
+    evidence: "internal/warehouse handlers; e2e/products_test.go, e2e/sessions_test.go"
+  - match: "quark:github.com/jcsvwinston/quark.(*Query[T]).OrderBy"
+    status: covered
+    evidence: "internal/warehouse list handlers; e2e/products_test.go"
+  - match: "quark:github.com/jcsvwinston/quark.(*Query[T]).List"
+    status: covered
+    evidence: "internal/warehouse list handlers; e2e/products_test.go, e2e/replica_test.go"
+  - match: "quark:github.com/jcsvwinston/quark.(*Query[T]).First"
+    status: covered
+    evidence: "internal/warehouse/handlers_auth.go login; e2e/sessions_test.go"
+  - match: "quark:github.com/jcsvwinston/quark.(*Query[T]).Find"
+    status: covered
+    evidence: "internal/warehouse get handlers; e2e/products_test.go, e2e/orders_test.go"
+  - match: "quark:github.com/jcsvwinston/quark.(*Query[T]).Count"
+    status: covered
+    evidence: "internal/warehouse Migrate seed + inventory report; e2e/replica_test.go"
+  - match: "quark:github.com/jcsvwinston/quark.(*Query[T]).Create"
+    status: covered
+    evidence: "internal/warehouse create paths on PG and MySQL; e2e/products_test.go (both engines asserted)"
+  - match: "quark:github.com/jcsvwinston/quark.(*Query[T]).UpdateMap"
+    status: covered
+    evidence: "internal/warehouse update paths; e2e/products_test.go, e2e/orders_test.go (outbox hook confirm)"
+  - match: "quark:github.com/jcsvwinston/quark.(*Query[T]).DeleteBy"
+    status: covered
+    evidence: "internal/warehouse/handlers_products.go delete; e2e/products_test.go"
+  - match: "quark:github.com/jcsvwinston/quark.(*Query[T]).Limit"
+    status: covered
+    evidence: "executed via quarkdatasource pagination; e2e/admin_test.go TestOrbitPanelDataStudio (panel list)"
+  - match: "quark:github.com/jcsvwinston/quark.(*Query[T]).Offset"
+    status: covered
+    evidence: "executed via quarkdatasource pagination; e2e/admin_test.go TestOrbitPanelDataStudio (panel list)"
+  - match: "quark:github.com/jcsvwinston/quark.(*Query[T]).Delete"
+    status: covered
+    evidence: "executed via quarkdatasource; e2e/admin_test.go TestOrbitPanelDataStudio (panel delete)"
+  - match: "quark:github.com/jcsvwinston/quark.(BeforeCreateHook).BeforeCreate"
+    status: covered
+    evidence: "internal/warehouse/models.go hooks run on every Create; created_at asserted non-zero via API responses"
+  - match: "quark:github.com/jcsvwinston/quark.GetModelMetaByType"
+    status: covered
+    evidence: "executed via quarkdatasource.Register at boot; e2e/admin_test.go (models listed in Data Studio)"
+
+  # ---- quark: engines outside the prototype -------------------------------
+  - match: "quark:*MSSQL*"
+    status: out-of-scope
+    reason: "MSSQL engine is outside this prototype (PostgreSQL + MySQL only); quark's own matrix covers it"
+  - match: "quark:*Oracle*"
+    status: out-of-scope
+    reason: "Oracle engine is outside this prototype (PostgreSQL + MySQL only); quark's own matrix covers it"
+  - match: "quark:*SQLite*"
+    status: out-of-scope
+    reason: "SQLite engine is outside this prototype (PostgreSQL + MySQL only); quark's own matrix covers it"
+  - match: "quark:*MariaDB*"
+    status: out-of-scope
+    reason: "MariaDB engine is outside this prototype (PostgreSQL + MySQL only); quark's own matrix covers it"
+  - match: "quark:github.com/jcsvwinston/quark.(*PostgresDialect).*"
+    status: out-of-scope
+    reason: "internal dialect methods: exercised transitively by every PG statement, not direct entry points (mirrors quark's own S7 allowlist)"
+  - match: "quark:github.com/jcsvwinston/quark.(*MySQLDialect).*"
+    status: out-of-scope
+    reason: "internal dialect methods: exercised transitively by every MySQL statement, not direct entry points (mirrors quark's own S7 allowlist)"
+  - match: "quark:github.com/jcsvwinston/quark.PostgreSQL"
+    status: covered
+    evidence: "dialect constructor selected by quark.New driver detection at boot (pgx clients)"
+  - match: "quark:github.com/jcsvwinston/quark.MySQL"
+    status: covered
+    evidence: "dialect constructor selected by quark.New driver detection at boot (mysql client)"
+
+  # ---- quark: subsystems outside the prototype ----------------------------
+  - match: "quark:github.com/jcsvwinston/quark/quarktenant.*"
+    status: out-of-scope
+    reason: "multi-tenant routing: the warehouse prototype is single-tenant"
+  - match: "quark:github.com/jcsvwinston/quark/otel.*"
+    status: out-of-scope
+    reason: "OpenTelemetry integration: the prototype stack ships no collector"
+  - match: "quark:github.com/jcsvwinston/quark/cache/*"
+    status: not-covered
+    reason: "query caching is not exercised by the warehouse prototype"
+  - match: "quark:github.com/jcsvwinston/quark/migrate.*"
+    status: not-covered
+    reason: "versioned migrations are not exercised: the prototype migrates schema-as-code (RegisterModel + MigrateRegistered)"
+  - match: "quark:github.com/jcsvwinston/quark/quarkmigrate.*"
+    status: not-covered
+    reason: "versioned-migration CLI surface not exercised (schema-as-code path used instead)"
+
+  # ---- quark: everything else ---------------------------------------------
+  - match: "quark:*"
+    status: not-covered
+    reason: "not exercised by the warehouse prototype (callable surfaces), or not directly invocable (types, consts, vars, interface methods — the categories quark's own S7 allowlist classifies as non-entry-points)"
+
+  # ---- nucleus: public packages the app executes --------------------------
+  - match: "nucleus:pkg/nucleus"
+    status: covered
+    evidence: "cmd/quantum-app/main.go (builder, modules, Runtime, Router, EventBus); every E2E boots through it"
+  - match: "nucleus:pkg/app"
+    status: covered
+    evidence: "config/e2e.yaml drives Config (databases aliases, session_store redis, storage s3, smtp, outbox); e2e suite boots the real app"
+  - match: "nucleus:pkg/db"
+    status: covered
+    evidence: "framework-managed handles for the default (PG) and audit (MySQL) aliases; e2e/products_test.go asserts the audit-alias module"
+  - match: "nucleus:pkg/router"
+    status: covered
+    evidence: "all warehouse routes and the orbit Mount run on it; every E2E request"
+  - match: "nucleus:pkg/auth"
+    status: covered
+    evidence: "SessionManager (Redis store) + HashPassword/CheckPassword; e2e/sessions_test.go asserts the session key in Redis"
+  - match: "nucleus:pkg/mail"
+    status: covered
+    evidence: "Sender.Send over real SMTP; e2e/orders_test.go asserts the message in Mailpit"
+  - match: "nucleus:pkg/storage"
+    status: covered
+    evidence: "Store Put/Get/Delete against MinIO via the s3 provider; e2e/storage_test.go asserts the object in MinIO directly"
+  - match: "nucleus:pkg/outbox"
+    status: covered
+    evidence: "NewStore + EnqueueTx in the order transaction; framework dispatcher + webhook bridge deliver; e2e/orders_test.go asserts row status and effect"
+  - match: "nucleus:pkg/observability"
+    status: covered
+    evidence: "the event bus carries quarkbridge SQL to the orbit panel in-process; e2e/admin_test.go TestOrbitLiveFeed asserts events on the feed"
+  - match: "nucleus:pkg/circuit"
+    status: covered
+    evidence: "default-enabled breakers wrap the mail and storage calls in e2e/orders_test.go and e2e/storage_test.go (pass-through path; trip/recovery not asserted)"
+  - match: "nucleus:pkg/health"
+    status: covered
+    evidence: "scripts/e2e_run.sh readiness gate requires /healthz to answer 200 before the suite runs"
+
+  # ---- nucleus: public packages the app does not exercise -----------------
+  - match: "nucleus:pkg/model"
+    status: not-covered
+    reason: "the domain runs on the quark ORM; nucleus model.CRUD/registry is not consumed by this app (orbit uses the quarkdatasource override instead)"
+  - match: "nucleus:pkg/authz"
+    status: not-covered
+    reason: "the app opts out of the default-deny enforcer (WithOpenAuthz) and guards mutations with its own session checks; only orbit's boot-time AddPolicy touches the enforcer"
+  - match: "nucleus:pkg/plugins"
+    status: not-covered
+    reason: "no external plugin binaries in the prototype"
+  - match: "nucleus:pkg/openapi"
+    status: not-covered
+    reason: "no OpenAPI document is mounted by the prototype"
+  - match: "nucleus:pkg/tasks"
+    status: not-covered
+    reason: "no scheduled tasks in the prototype (background work goes through the outbox)"
+  - match: "nucleus:pkg/observe"
+    status: not-covered
+    reason: "structured logging runs framework-internally; the app asserts nothing against it"
+  - match: "nucleus:pkg/observability/hooks"
+    status: not-covered
+    reason: "observability hooks are not consumed by the app"
+  - match: "nucleus:pkg/errors"
+    status: not-covered
+    reason: "the app returns its own JSON errors; the framework error helpers are not consumed directly"
+  - match: "nucleus:pkg/validate"
+    status: not-covered
+    reason: "input validation is hand-rolled in the handlers; pkg/validate is not consumed"
+  - match: "nucleus:pkg/signals"
+    status: not-covered
+    reason: "the signals bus is not consumed by the app"
+
+  # ---- orbit: root module -------------------------------------------------
+  - match: "orbit:github.com/jcsvwinston/orbit func:Module"
+    status: covered
+    evidence: "cmd/quantum-app/main.go mounts the panel; e2e/admin_test.go drives it over HTTP"
+  - match: "orbit:github.com/jcsvwinston/orbit type:Config"
+    status: covered
+    evidence: "cmd/quantum-app/main.go builds it"
+  - match: "orbit:github.com/jcsvwinston/orbit field:Config.Prefix"
+    status: covered
+    evidence: "set to /admin in main.go; all panel E2E URLs depend on it"
+  - match: "orbit:github.com/jcsvwinston/orbit field:Config.Title"
+    status: covered
+    evidence: "set in main.go (panel heading)"
+  - match: "orbit:github.com/jcsvwinston/orbit field:Config.DataSource"
+    status: covered
+    evidence: "quarkdatasource adapter injected in main.go; e2e/admin_test.go TestOrbitPanelDataStudio exercises Data Studio through it"
+  - match: "orbit:github.com/jcsvwinston/orbit field:Config.BootstrapUsername"
+    status: covered
+    evidence: "set in main.go; e2e/admin_test.go logs into the panel with it"
+  - match: "orbit:github.com/jcsvwinston/orbit field:Config.BootstrapEmail"
+    status: covered
+    evidence: "set in main.go (bootstrap admin provisioning)"
+  - match: "orbit:github.com/jcsvwinston/orbit field:Config.BootstrapPassword"
+    status: covered
+    evidence: "set in main.go; e2e/admin_test.go logs into the panel with it"
+  - match: "orbit:github.com/jcsvwinston/orbit field:Config.MultiTenant*"
+    status: out-of-scope
+    reason: "the warehouse prototype is single-tenant"
+  - match: "orbit:github.com/jcsvwinston/orbit field:Config.Cluster*"
+    status: not-covered
+    reason: "single-node deployment: the in-process live feed needs no Redis relay (the relay is for multi-node fan-out)"
+  - match: "orbit:github.com/jcsvwinston/orbit *"
+    status: not-covered
+    reason: "optional panel knobs left at their defaults by the prototype (auth database alias, environment label, migrations path, audit ring size, live excludes, trace URL template, DefaultPrefix constant)"
+
+  # ---- orbit: datasource contract -----------------------------------------
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource type:DataSource"
+    status: covered
+    evidence: "quarkdatasource adapter implements it; panel consumes it in e2e/admin_test.go"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource type:ModelSource"
+    status: covered
+    evidence: "model listing via /admin/api/models in e2e/admin_test.go"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource type:RecordStore"
+    status: covered
+    evidence: "record list/create/update/delete via the panel API in e2e/admin_test.go"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource type:Record"
+    status: covered
+    evidence: "create/update payloads travel as Record maps in e2e/admin_test.go"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource type:ModelInfo"
+    status: covered
+    evidence: "/admin/api/models serializes it; asserted in e2e/admin_test.go"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource type:FieldInfo"
+    status: covered
+    evidence: "schema fields built by quarkdatasource.Register and served by the panel schema endpoints"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource type:Page"
+    status: covered
+    evidence: "panel record listing returns it; items/total asserted in e2e/admin_test.go"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource type:Query"
+    status: covered
+    evidence: "page/page_size travel through it in the panel list call in e2e/admin_test.go"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource iface-method:DataSource.Store"
+    status: covered
+    evidence: "every panel record operation resolves the store through it (e2e/admin_test.go)"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource iface-method:ModelSource.All"
+    status: covered
+    evidence: "/admin/api/models listing (e2e/admin_test.go)"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource iface-method:ModelSource.Get"
+    status: covered
+    evidence: "per-model resolution on panel record calls (e2e/admin_test.go)"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource iface-method:RecordStore.List"
+    status: covered
+    evidence: "panel record listing (e2e/admin_test.go)"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource iface-method:RecordStore.Create"
+    status: covered
+    evidence: "panel create, cross-checked via the public API (e2e/admin_test.go)"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource iface-method:RecordStore.Update"
+    status: covered
+    evidence: "panel edit, cross-checked via the public API (e2e/admin_test.go)"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource iface-method:RecordStore.Delete"
+    status: covered
+    evidence: "panel delete, cross-checked via the public API 404 (e2e/admin_test.go)"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource field:Page.Items"
+    status: covered
+    evidence: "asserted in the panel list call (e2e/admin_test.go)"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource field:Page.Total"
+    status: covered
+    evidence: "asserted in the panel list call (e2e/admin_test.go)"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource field:Query.Page"
+    status: covered
+    evidence: "passed as ?page= in the panel list call (e2e/admin_test.go)"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource field:Query.PageSize"
+    status: covered
+    evidence: "passed as ?page_size= in the panel list call (e2e/admin_test.go)"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource field:ModelInfo.Name"
+    status: covered
+    evidence: "asserted for Product and Order in /admin/api/models (e2e/admin_test.go)"
+  - match: "orbit:github.com/jcsvwinston/orbit/datasource *"
+    status: not-covered
+    reason: "contract members that execute panel-internally or describe features the prototype's models do not use (choices, FK/index metadata, tenancy fields, search/filter flags, estimated counts); not asserted by the E2E"

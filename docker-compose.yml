@@ -1,0 +1,103 @@
+# Local E2E infrastructure for quantum-app. The same file drives CI (the E2E
+# job runs `docker compose up -d --wait`): PostgreSQL primary + streaming
+# replica, MySQL (aliased secondary database), Redis (sessions), MinIO (S3
+# storage), Mailpit (SMTP with an HTTP API the E2E suite asserts against).
+#
+#   docker compose up -d --wait
+#   ./scripts/e2e_run.sh
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: warehouse
+      POSTGRES_PASSWORD: warehouse
+      POSTGRES_DB: warehouse
+    ports:
+      - "55442:5432"
+    volumes:
+      - ./scripts/pg_primary_init.sh:/docker-entrypoint-initdb.d/01-replication.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U warehouse -d warehouse"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  # Streaming replica: base-backup from the primary, then run as a hot
+  # standby (-R writes standby.signal + primary_conninfo). quark's
+  # WithReplicas routes the app's report reads here.
+  postgres-replica:
+    image: postgres:16
+    user: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: replicator
+    command:
+      - bash
+      - -ec
+      - |
+        rm -rf /var/lib/postgresql/data/*
+        until pg_basebackup -h postgres -p 5432 -U replicator \
+            -D /var/lib/postgresql/data -R -X stream; do
+          echo "replica: waiting for primary"; sleep 1
+        done
+        chmod 700 /var/lib/postgresql/data
+        exec postgres
+    ports:
+      - "55443:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U warehouse -d warehouse"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: warehouse_audit
+      MYSQL_USER: warehouse
+      MYSQL_PASSWORD: warehouse
+    ports:
+      - "53306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uwarehouse", "-pwarehouse"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "56379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  minio:
+    image: minio/minio:latest
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "59000:9000"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "51025:1025" # SMTP
+      - "58025:8025" # HTTP API
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8025/livez"]
+      interval: 2s
+      timeout: 2s
+      retries: 30

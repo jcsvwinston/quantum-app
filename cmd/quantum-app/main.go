@@ -92,11 +92,12 @@ func main() {
 	app, err := nucleus.New().
 		FromConfigFile(*configPath).
 		Mount(warehouse.Module(warehouse.Deps{
-			PG:          pg,
-			PGRead:      pgRead,
-			MySQL:       my,
-			OutboxToken: envOr("WAREHOUSE_OUTBOX_TOKEN", "dev-outbox-token"),
-			MailFrom:    envOr("WAREHOUSE_MAIL_FROM", "warehouse@quantum-app.local"),
+			PG:           pg,
+			PGRead:       pgRead,
+			MySQL:        my,
+			OutboxSecret: envOr("WAREHOUSE_OUTBOX_SECRET", "dev-outbox-secret"),
+			OutboxToken:  envOr("WAREHOUSE_OUTBOX_TOKEN", "dev-outbox-token"),
+			MailFrom:     envOr("WAREHOUSE_MAIL_FROM", "warehouse@quantum-app.local"),
 		})).
 		Mount(warehouse.AuditModule()).
 		Mount(orbit.Module(orbit.Config{

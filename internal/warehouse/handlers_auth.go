@@ -65,8 +65,10 @@ func (m *module) me(c *nucleus.Context) error {
 	})
 }
 
-// requireUser guards mutating endpoints: true when a session identity exists,
-// otherwise it writes the 401 and the caller returns nil.
+// requireUser guards endpoints that mutate state or expose PII (all product
+// mutations, the datasheet upload/delete, and the order reads): true when a
+// session identity exists, otherwise it writes the 401 and the caller
+// returns nil.
 func (m *module) requireUser(c *nucleus.Context) bool {
 	if m.sess.GetString(c.Request.Context(), sessionUserIDKey) == "" {
 		_ = c.JSON(http.StatusUnauthorized, map[string]string{"error": "login required"})

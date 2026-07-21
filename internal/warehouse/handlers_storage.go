@@ -22,12 +22,14 @@ func datasheetKey(productID int64) string {
 // isStorageNotFound reports whether err means "object does not exist".
 //
 // It checks storage.ErrNotFound first, plus a workaround for the s3 provider
-// in nucleus v1.3.3: its not-found detection matches on the error TEXT
-// ("NoSuchKey"/"not found"), but the S3 client's error string for a missing
-// object is "The specified key does not exist." (the NoSuchKey code travels
-// in the response struct, not the message), so Get on a missing key surfaces
-// a raw error instead of storage.ErrNotFound. Drop the string check when the
-// provider maps this case upstream.
+// in every nucleus release up to and including the pinned v1.4.0: its
+// not-found detection matches on the error TEXT ("NoSuchKey"/"not found"),
+// but the S3 client's error string for a missing object is "The specified
+// key does not exist." (the NoSuchKey code travels in the typed response,
+// not the message), so Get on a missing key surfaces a raw error instead of
+// storage.ErrNotFound. Upstream already classifies by the SDK's typed error
+// on nucleus main (post-v1.4.0, not yet in a tagged release); drop the
+// string check when the pinned nucleus includes that fix.
 func isStorageNotFound(err error) bool {
 	var nf storage.ErrNotFound
 	if errors.As(err, &nf) {

@@ -2,7 +2,7 @@ module github.com/jcsvwinston/quantum-app
 
 go 1.26.5
 
-// Quantum certified set 1.7.2 — every suite module below is pinned to the
+// Quantum certified set 1.8.0 — every suite module below is pinned to the
 // exact tag certified together in the suite's versions.yaml. These pins move
 // ONLY when a new set is certified (never to intermediate releases), and the
 // app resolves them from the Go module proxy: no go.work, no replace

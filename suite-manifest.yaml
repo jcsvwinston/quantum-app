@@ -18,7 +18,7 @@
 #   not-covered  in reach of the prototype but not exercised (reason given)
 #   out-of-scope deliberately outside the prototype (reason given)
 
-suite: "1.7.2"
+suite: "1.8.0"
 pins:
   quark: v1.3.3
   nucleus: v1.4.0

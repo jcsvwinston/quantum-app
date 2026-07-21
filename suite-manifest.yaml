@@ -105,7 +105,7 @@ classifications:
     evidence: "executed via quarkdatasource; e2e/admin_test.go TestOrbitPanelDataStudio (panel delete)"
   - match: "quark:github.com/jcsvwinston/quark.(BeforeCreateHook).BeforeCreate"
     status: covered
-    evidence: "internal/warehouse/models.go hooks run on every Create; created_at asserted non-zero via API responses"
+    evidence: "internal/warehouse/models.go hooks run on every Create; e2e/products_test.go asserts created_at non-zero via the API for Product (PG) and StockMovement (MySQL)"
   - match: "quark:github.com/jcsvwinston/quark.GetModelMetaByType"
     status: covered
     evidence: "executed via quarkdatasource.Register at boot; e2e/admin_test.go (models listed in Data Studio)"

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -32,16 +33,21 @@ func TestProductCRUDAcrossEngines(t *testing.T) {
 
 	// Read back.
 	var got struct {
-		ID    int64  `json:"id"`
-		SKU   string `json:"sku"`
-		Name  string `json:"name"`
-		Stock int64  `json:"stock"`
+		ID        int64     `json:"id"`
+		SKU       string    `json:"sku"`
+		Name      string    `json:"name"`
+		Stock     int64     `json:"stock"`
+		CreatedAt time.Time `json:"created_at"`
 	}
 	if status := doJSON(t, c, http.MethodGet, fmt.Sprintf("%s/api/products/%d", base, id), nil, &got); status != http.StatusOK {
 		t.Fatalf("get product: status %d", status)
 	}
 	if got.SKU != sku || got.Stock != 7 {
 		t.Fatalf("get product: %+v", got)
+	}
+	// BeforeCreate stamped the creation time (quark hook on Create).
+	if got.CreatedAt.IsZero() {
+		t.Fatalf("get product: created_at is zero — BeforeCreate hook did not stamp it")
 	}
 
 	// Update.
@@ -76,9 +82,10 @@ func TestProductCRUDAcrossEngines(t *testing.T) {
 	// Audit trail via the API (quark reading MySQL).
 	var movements struct {
 		Movements []struct {
-			ProductID int64  `json:"product_id"`
-			Delta     int64  `json:"delta"`
-			Reason    string `json:"reason"`
+			ProductID int64     `json:"product_id"`
+			Delta     int64     `json:"delta"`
+			Reason    string    `json:"reason"`
+			CreatedAt time.Time `json:"created_at"`
 		} `json:"movements"`
 	}
 	if status := doJSON(t, c, http.MethodGet,
@@ -87,6 +94,10 @@ func TestProductCRUDAcrossEngines(t *testing.T) {
 	}
 	if len(movements.Movements) == 0 || movements.Movements[len(movements.Movements)-1].Reason != "initial" {
 		t.Fatalf("expected an 'initial' stock movement on MySQL, got %+v", movements.Movements)
+	}
+	// BeforeCreate stamped the movement too (the hook runs on both engines).
+	if movements.Movements[len(movements.Movements)-1].CreatedAt.IsZero() {
+		t.Fatalf("stock movement created_at is zero — BeforeCreate hook did not stamp it")
 	}
 
 	// Audit trail directly against MySQL: the row is really there.

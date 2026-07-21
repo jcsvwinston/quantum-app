@@ -34,8 +34,10 @@ jobs:
         run: go vet ./...
       - name: Unit tests (E2E auto-skips without services)
         run: go test ./...
-      - name: Suite manifest gate
+      - name: Suite manifest gate (pins + human labels)
         run: ./scripts/check_suite_manifest.sh
+      - name: Guard fixtures (each gate's negative, executed — every gate must bite)
+        run: ./scripts/guard_fixtures.sh
 
   e2e:
     name: E2E (real app + real services in Docker)

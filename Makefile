@@ -3,7 +3,7 @@
 # certified tags in go.mod, never from a local workspace.
 export GOWORK := off
 
-.PHONY: build vet test e2e-local guard manifest-check manifest-gen clean
+.PHONY: build vet test e2e-local guard manifest-check manifest-gen guard-fixtures clean
 
 build:
 	go build ./...
@@ -28,6 +28,11 @@ manifest-gen:
 
 manifest-check:
 	./scripts/check_suite_manifest.sh
+
+# Executes every gate's negative fixture: each gate must BITE on a doctored
+# tree with the expected cause (guard-of-guards style; CI runs this too).
+guard-fixtures:
+	./scripts/guard_fixtures.sh
 
 clean:
 	rm -rf bin

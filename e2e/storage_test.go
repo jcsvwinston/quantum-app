@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/minio/minio-go/v7"
@@ -64,6 +65,14 @@ func TestStorageS3MinIO(t *testing.T) {
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK || !bytes.Equal(got, content) {
 		t.Fatalf("download: status %d body %q", resp.StatusCode, string(got))
+	}
+	// The download must defend against stored XSS: no MIME sniffing, and the
+	// body offered as a download instead of rendered inline.
+	if v := resp.Header.Get("X-Content-Type-Options"); v != "nosniff" {
+		t.Fatalf("download: X-Content-Type-Options %q (want nosniff)", v)
+	}
+	if v := resp.Header.Get("Content-Disposition"); !strings.HasPrefix(v, "attachment") {
+		t.Fatalf("download: Content-Disposition %q (want attachment)", v)
 	}
 
 	// The object is really in MinIO.

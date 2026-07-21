@@ -21,13 +21,13 @@ func datasheetKey(productID int64) string {
 
 // isStorageNotFound reports whether err means "object does not exist".
 //
-// It checks storage.ErrNotFound first, plus a workaround for the s3 provider
-// in nucleus v1.3.3: its not-found detection matches on the error TEXT
-// ("NoSuchKey"/"not found"), but the S3 client's error string for a missing
-// object is "The specified key does not exist." (the NoSuchKey code travels
-// in the response struct, not the message), so Get on a missing key surfaces
-// a raw error instead of storage.ErrNotFound. Drop the string check when the
-// provider maps this case upstream.
+// It checks storage.ErrNotFound first, plus a workaround for the nucleus s3
+// provider (still present at the pinned v1.4.0): its not-found detection
+// matches on the error TEXT ("NoSuchKey"/"not found"), but the S3 client's
+// error string for a missing object is "The specified key does not exist."
+// (the NoSuchKey code travels in the response struct, not the message), so
+// Get on a missing key surfaces a raw error instead of storage.ErrNotFound.
+// Drop the string check when the provider maps this case upstream.
 func isStorageNotFound(err error) bool {
 	var nf storage.ErrNotFound
 	if errors.As(err, &nf) {
@@ -90,6 +90,12 @@ func (m *module) getDatasheet(c *nucleus.Context) error {
 	if info.ContentType != "" {
 		c.Writer.Header().Set("Content-Type", info.ContentType)
 	}
+	// Datasheets are user-supplied content: forbid MIME sniffing and serve
+	// as a download, never inline — otherwise an uploaded HTML "datasheet"
+	// becomes stored XSS on the app's own origin.
+	c.Writer.Header().Set("X-Content-Type-Options", "nosniff")
+	c.Writer.Header().Set("Content-Disposition",
+		fmt.Sprintf("attachment; filename=%q", fmt.Sprintf("datasheet-%d", id)))
 	c.Writer.WriteHeader(http.StatusOK)
 	_, err = io.Copy(c.Writer, rc)
 	return err

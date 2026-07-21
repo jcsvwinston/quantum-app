@@ -21,6 +21,11 @@ export QA_OPS_EMAIL="${QA_OPS_EMAIL:-ops@warehouse.local}"
 export QA_OPS_PASSWORD="${QA_OPS_PASSWORD:-warehouse-ops}"
 export QA_ADMIN_USER="${QA_ADMIN_USER:-admin}"
 export QA_ADMIN_PASSWORD="${QA_ADMIN_PASSWORD:-warehouse-admin}"
+# Outbox webhook authentication. QA_OUTBOX_SECRET must match the bridges'
+# config.secret in config/e2e.yaml (HMAC body signature); QA_OUTBOX_TOKEN is
+# the legacy static header the pinned nucleus v1.4.0 still sends.
+export QA_OUTBOX_SECRET="${QA_OUTBOX_SECRET:-dev-outbox-secret}"
+export QA_OUTBOX_TOKEN="${QA_OUTBOX_TOKEN:-dev-outbox-token}"
 
 # The app reads the same values through its own env keys.
 export WAREHOUSE_PG_DSN="$QA_PG_DSN"
@@ -30,6 +35,8 @@ export WAREHOUSE_OPS_EMAIL="$QA_OPS_EMAIL"
 export WAREHOUSE_OPS_PASSWORD="$QA_OPS_PASSWORD"
 export WAREHOUSE_ADMIN_USER="$QA_ADMIN_USER"
 export WAREHOUSE_ADMIN_PASSWORD="$QA_ADMIN_PASSWORD"
+export WAREHOUSE_OUTBOX_SECRET="$QA_OUTBOX_SECRET"
+export WAREHOUSE_OUTBOX_TOKEN="$QA_OUTBOX_TOKEN"
 
 echo "==> building bin/quantum-app"
 go build -o bin/quantum-app ./cmd/quantum-app

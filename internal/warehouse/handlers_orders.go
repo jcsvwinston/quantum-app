@@ -1,8 +1,10 @@
 package warehouse
 
 import (
+	"crypto/hmac"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/jcsvwinston/nucleus/pkg/mail"
@@ -111,21 +113,77 @@ func (m *module) getOrder(c *nucleus.Context) error {
 	return c.JSON(http.StatusOK, o)
 }
 
+// payloadEncodingHeader mirrors outbox.WebhookPayloadEncodingHeader: the
+// bridge declares on every delivery whether the "payload" field is embedded
+// JSON ("json") or a base64 JSON string ("base64"). The constant is local
+// because the pinned nucleus release predates the header; switch to the
+// exported outbox constant when the pins move past it.
+const payloadEncodingHeader = "X-Outbox-Payload-Encoding"
+
+// authenticateOutboxDelivery authenticates one delivery to /hooks/outbox.
+//
+// Preferred path: the bridge's HMAC-SHA256 body signature. When the request
+// carries nucleus.WebhookSignatureHeader (the same header module webhooks
+// use), it must verify against the shared secret over the exact body bytes —
+// compared with hmac.Equal, never with != (a non-constant-time comparison
+// leaks how many leading bytes matched).
+//
+// Fallback path: releases of nucleus up to v1.4.0 do not sign bridge
+// deliveries, so an unsigned request may still authenticate with the legacy
+// static X-Outbox-Token header — also compared in constant time. Remove this
+// fallback when the pinned nucleus signs (the E2E probe for the signature
+// stops skipping at that same bump).
+func (m *module) authenticateOutboxDelivery(r *http.Request, body []byte) bool {
+	if sig := r.Header.Get(nucleus.WebhookSignatureHeader); sig != "" {
+		want := nucleus.SignWebhookBody(m.deps.OutboxSecret, body)
+		return hmac.Equal([]byte(want), []byte(sig))
+	}
+	return hmac.Equal([]byte(r.Header.Get("X-Outbox-Token")), []byte(m.deps.OutboxToken))
+}
+
+// decodeOutboxPayload decodes the "payload" field of a delivery according to
+// the encoding the bridge declared, instead of guessing the shape:
+//
+//   - "json": the payload document is embedded verbatim — use it as is.
+//   - "base64": the field is a JSON string holding base64 of the payload
+//     bytes (the classic wire shape; also what an absent header means, since
+//     nucleus releases up to v1.4.0 emit that shape and no header).
+func decodeOutboxPayload(encoding string, field json.RawMessage) ([]byte, error) {
+	switch encoding {
+	case "json":
+		return field, nil
+	case "base64", "":
+		var raw []byte // encoding/json base64-decodes into []byte
+		if err := json.Unmarshal(field, &raw); err != nil {
+			return nil, fmt.Errorf("payload is not the declared base64 string: %w", err)
+		}
+		return raw, nil
+	default:
+		return nil, fmt.Errorf("unknown %s value %q", payloadEncodingHeader, encoding)
+	}
+}
+
 // outboxHook is the delivery target of the framework's outbox webhook bridge.
-// The bridge POSTs the outbox Message as JSON; Payload arrives base64-encoded
-// (Go's encoding/json representation of []byte). Delivery is at-least-once,
-// so the handler is idempotent: an already-confirmed order is a no-op.
+// Deliveries are authenticated by the bridge's HMAC body signature (legacy
+// static token while the pinned nucleus does not sign) and the payload is
+// decoded per the declared X-Outbox-Payload-Encoding. Delivery is
+// at-least-once, so the handler is idempotent: an already-confirmed order is
+// a no-op.
 func (m *module) outboxHook(c *nucleus.Context) error {
-	if c.Request.Header.Get("X-Outbox-Token") != m.deps.OutboxToken {
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "bad outbox token"})
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "unreadable body"})
+	}
+	if !m.authenticateOutboxDelivery(c.Request, body) {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "bad outbox signature"})
 	}
 
 	var msg struct {
-		ID      string `json:"id"`
-		Topic   string `json:"topic"`
-		Payload []byte `json:"payload"`
+		ID      string          `json:"id"`
+		Topic   string          `json:"topic"`
+		Payload json.RawMessage `json:"payload"`
 	}
-	if err := c.BindJSON(&msg); err != nil {
+	if err := json.Unmarshal(body, &msg); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
 	}
 	if msg.Topic != orderPlacedTopic {
@@ -135,8 +193,12 @@ func (m *module) outboxHook(c *nucleus.Context) error {
 		return c.JSON(http.StatusOK, map[string]any{"processed": false})
 	}
 
+	payload, err := decodeOutboxPayload(c.Request.Header.Get(payloadEncodingHeader), msg.Payload)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid payload"})
+	}
 	var ev orderPlacedPayload
-	if err := json.Unmarshal(msg.Payload, &ev); err != nil {
+	if err := json.Unmarshal(payload, &ev); err != nil || ev.OrderID == 0 {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid payload"})
 	}
 

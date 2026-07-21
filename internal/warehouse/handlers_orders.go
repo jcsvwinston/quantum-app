@@ -92,7 +92,12 @@ func (m *module) createOrder(c *nucleus.Context) error {
 	return c.JSON(http.StatusCreated, map[string]any{"id": orderID, "status": "pending"})
 }
 
+// listOrders and getOrder require a session: orders carry customer_email
+// (PII), so unlike the product catalogue these reads are operator-only.
 func (m *module) listOrders(c *nucleus.Context) error {
+	if !m.requireUser(c) {
+		return nil
+	}
 	orders, err := quark.For[Order](c.Request.Context(), m.bridgedPG).
 		OrderBy("id", "DESC").List()
 	if err != nil {
@@ -102,6 +107,9 @@ func (m *module) listOrders(c *nucleus.Context) error {
 }
 
 func (m *module) getOrder(c *nucleus.Context) error {
+	if !m.requireUser(c) {
+		return nil
+	}
 	id, ok := parseID(c)
 	if !ok {
 		return nil

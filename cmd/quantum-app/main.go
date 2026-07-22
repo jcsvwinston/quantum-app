@@ -90,6 +90,17 @@ func main() {
 	outboxSecret := mustEnv("WAREHOUSE_OUTBOX_SECRET")
 	opsPassword := mustEnv("WAREHOUSE_OPS_PASSWORD")
 
+	// The encoding the /hooks/outbox consumer expects — it MUST match the
+	// bridge's `payload_encoding` in the nucleus config (this app configures
+	// `json`). Not a secret, so it has a default; the consumer decodes by this
+	// value, never by the unsigned request header (SEC-3).
+	outboxEncoding := envOr("WAREHOUSE_OUTBOX_ENCODING", "json")
+	switch outboxEncoding {
+	case "json", "base64":
+	default:
+		log.Fatalf("quantum-app: WAREHOUSE_OUTBOX_ENCODING must be \"json\" or \"base64\", got %q", outboxEncoding)
+	}
+
 	// Quark clients own the domain schema. The DSNs mirror the databases.*
 	// URLs in the nucleus config (nucleus manages its own pools for sessions,
 	// outbox, and the admin; quark manages the domain pools).
@@ -144,11 +155,12 @@ func main() {
 	app, err := nucleus.New().
 		FromConfigFile(*configPath).
 		Mount(warehouse.Module(warehouse.Deps{
-			PG:           pg,
-			PGRead:       pgRead,
-			MySQL:        my,
-			OutboxSecret: outboxSecret,
-			MailFrom:     envOr("WAREHOUSE_MAIL_FROM", "warehouse@quantum-app.local"),
+			PG:             pg,
+			PGRead:         pgRead,
+			MySQL:          my,
+			OutboxSecret:   outboxSecret,
+			OutboxEncoding: outboxEncoding,
+			MailFrom:       envOr("WAREHOUSE_MAIL_FROM", "warehouse@quantum-app.local"),
 		})).
 		Mount(warehouse.AuditModule()).
 		Mount(orbit.Module(orbit.Config{

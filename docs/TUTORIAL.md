@@ -27,10 +27,10 @@ five tags are certified together upstream (see the suite's `versions.yaml`),
 and Go's version resolution keeps them exact as long as nothing requires newer.
 
 ```bash
-go get github.com/jcsvwinston/nucleus@v1.5.0
+go get github.com/jcsvwinston/nucleus@v1.6.0
 go get github.com/jcsvwinston/quark@v1.4.0
-go get github.com/jcsvwinston/orbit@v1.5.0
-go get github.com/jcsvwinston/orbit/quarkbridge@v0.3.5
+go get github.com/jcsvwinston/orbit@v1.5.1
+go get github.com/jcsvwinston/orbit/quarkbridge@v0.3.6
 go get github.com/jcsvwinston/orbit/quarkdatasource@v0.2.7
 ```
 

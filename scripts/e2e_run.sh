@@ -26,9 +26,15 @@ export QA_ADMIN_USER="${QA_ADMIN_USER:-admin}"
 export QA_ADMIN_PASSWORD="${QA_ADMIN_PASSWORD:-warehouse-admin}"
 # Outbox webhook authentication: QA_OUTBOX_SECRET must match the bridges'
 # config.secret in config/e2e.yaml (HMAC body signature). The pinned nucleus
-# v1.5.0 signs every delivery and the hook requires that signature — there is
+# v1.6.0 signs every delivery and the hook requires that signature — there is
 # no legacy static token anymore.
 export QA_OUTBOX_SECRET="${QA_OUTBOX_SECRET:-ci-e2e-outbox-secret}"
+# Outbox payload encoding the /hooks/outbox consumer EXPECTS. It must equal the
+# bridges' `payload_encoding` in config/e2e.yaml (`json`): the consumer decodes
+# by this configured value and rejects a delivery whose unsigned
+# X-Outbox-Payload-Encoding header disagrees (SEC-3). Set explicitly so the E2E
+# exercises the configured decode path, not an implicit default.
+export QA_OUTBOX_ENCODING="${QA_OUTBOX_ENCODING:-json}"
 
 # The app reads the same values through its own env keys.
 export WAREHOUSE_PG_DSN="$QA_PG_DSN"
@@ -39,6 +45,7 @@ export WAREHOUSE_OPS_PASSWORD="$QA_OPS_PASSWORD"
 export WAREHOUSE_ADMIN_USER="$QA_ADMIN_USER"
 export WAREHOUSE_ADMIN_PASSWORD="$QA_ADMIN_PASSWORD"
 export WAREHOUSE_OUTBOX_SECRET="$QA_OUTBOX_SECRET"
+export WAREHOUSE_OUTBOX_ENCODING="$QA_OUTBOX_ENCODING"
 
 echo "==> building bin/quantum-app"
 go build -o bin/quantum-app ./cmd/quantum-app

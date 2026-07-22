@@ -121,12 +121,12 @@ func (m *module) getOrder(c *nucleus.Context) error {
 	return c.JSON(http.StatusOK, o)
 }
 
-// payloadEncodingHeader mirrors outbox.WebhookPayloadEncodingHeader: the
-// bridge declares on every delivery whether the "payload" field is embedded
-// JSON ("json") or a base64 JSON string ("base64"). The constant is local
-// because the pinned nucleus release predates the header; switch to the
-// exported outbox constant when the pins move past it.
-const payloadEncodingHeader = "X-Outbox-Payload-Encoding"
+// The bridge declares on every delivery whether the "payload" field is
+// embedded JSON ("json") or a base64 JSON string ("base64") in
+// outbox.WebhookPayloadEncodingHeader. That header is unsigned (SEC-3), so
+// this consumer never decodes by it — it decodes by the encoding it was
+// configured to expect (Deps.OutboxEncoding) and only checks the header for
+// agreement, as defense-in-depth.
 
 // authenticateOutboxDelivery authenticates one delivery to /hooks/outbox
 // against the bridge's HMAC-SHA256 body signature — the only accepted proof.
@@ -153,12 +153,13 @@ func (m *module) authenticateOutboxDelivery(r *http.Request, body []byte) bool {
 }
 
 // decodeOutboxPayload decodes the "payload" field of a delivery according to
-// the encoding the bridge declared, instead of guessing the shape:
+// the encoding the consumer is CONFIGURED to expect (Deps.OutboxEncoding),
+// never the request header (unsigned; SEC-3):
 //
 //   - "json": the payload document is embedded verbatim — use it as is.
-//   - "base64": the field is a JSON string holding base64 of the payload
-//     bytes (the classic wire shape; also what an absent header means, since
-//     nucleus releases up to v1.4.0 emit that shape and no header).
+//   - "base64" (or ""): the field is a JSON string holding base64 of the
+//     payload bytes (the classic wire shape; "" is the base64 default that
+//     nucleus releases up to v1.4.0 emit with no header).
 func decodeOutboxPayload(encoding string, field json.RawMessage) ([]byte, error) {
 	switch encoding {
 	case "json":
@@ -170,15 +171,17 @@ func decodeOutboxPayload(encoding string, field json.RawMessage) ([]byte, error)
 		}
 		return raw, nil
 	default:
-		return nil, fmt.Errorf("unknown %s value %q", payloadEncodingHeader, encoding)
+		return nil, fmt.Errorf("unknown configured outbox encoding %q", encoding)
 	}
 }
 
 // outboxHook is the delivery target of the framework's outbox webhook bridge.
 // Deliveries are authenticated by the bridge's HMAC body signature (required;
-// see authenticateOutboxDelivery) and the payload is decoded per the declared
-// X-Outbox-Payload-Encoding. Delivery is at-least-once, so the handler is
-// idempotent: an already-confirmed order is a no-op.
+// see authenticateOutboxDelivery) and the payload is decoded per the encoding
+// this consumer is configured to expect (Deps.OutboxEncoding), with the
+// unsigned declared header only checked for agreement (SEC-3). Delivery is
+// at-least-once, so the handler is idempotent: an already-confirmed order is
+// a no-op.
 func (m *module) outboxHook(c *nucleus.Context) error {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -203,7 +206,15 @@ func (m *module) outboxHook(c *nucleus.Context) error {
 		return c.JSON(http.StatusOK, map[string]any{"processed": false})
 	}
 
-	payload, err := decodeOutboxPayload(c.Request.Header.Get(payloadEncodingHeader), msg.Payload)
+	// Defense-in-depth (SEC-3): the declared encoding header is unsigned, so
+	// reject a delivery whose declared encoding disagrees with the one this
+	// consumer is configured to expect — but decode by the CONFIGURED value,
+	// never by the header.
+	declared := c.Request.Header.Get(outbox.WebhookPayloadEncodingHeader)
+	if err := outbox.CheckPayloadEncoding(m.deps.OutboxEncoding, declared); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "payload encoding mismatch"})
+	}
+	payload, err := decodeOutboxPayload(m.deps.OutboxEncoding, msg.Payload)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid payload"})
 	}

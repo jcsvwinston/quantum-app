@@ -128,25 +128,28 @@ func (m *module) getOrder(c *nucleus.Context) error {
 // exported outbox constant when the pins move past it.
 const payloadEncodingHeader = "X-Outbox-Payload-Encoding"
 
-// authenticateOutboxDelivery authenticates one delivery to /hooks/outbox.
+// authenticateOutboxDelivery authenticates one delivery to /hooks/outbox
+// against the bridge's HMAC-SHA256 body signature — the only accepted proof.
 //
-// Preferred path: the bridge's HMAC-SHA256 body signature. When the request
-// carries nucleus.WebhookSignatureHeader (the same header module webhooks
-// use), it must verify against the shared secret over the exact body bytes —
-// compared with hmac.Equal, never with != (a non-constant-time comparison
-// leaks how many leading bytes matched).
+// The request MUST carry nucleus.WebhookSignatureHeader (the same header
+// module webhooks use); its value must verify against the shared secret over
+// the exact body bytes, compared with hmac.Equal, never with != (a
+// non-constant-time comparison leaks how many leading bytes matched). A
+// request with no signature header authenticates with nothing and is
+// rejected.
 //
-// Fallback path: releases of nucleus up to v1.4.0 do not sign bridge
-// deliveries, so an unsigned request may still authenticate with the legacy
-// static X-Outbox-Token header — also compared in constant time. Remove this
-// fallback when the pinned nucleus signs (the E2E probe for the signature
-// stops skipping at that same bump).
+// There is no static-token fallback: the pinned nucleus (v1.5.0) signs every
+// bridge delivery, so accepting an unsigned request on a shared token would
+// only add a second, weaker credential and collapse the door's strength to
+// min(HMAC, token). The signature is over the body only — exactly what the
+// pinned nucleus signs.
 func (m *module) authenticateOutboxDelivery(r *http.Request, body []byte) bool {
-	if sig := r.Header.Get(nucleus.WebhookSignatureHeader); sig != "" {
-		want := nucleus.SignWebhookBody(m.deps.OutboxSecret, body)
-		return hmac.Equal([]byte(want), []byte(sig))
+	sig := r.Header.Get(nucleus.WebhookSignatureHeader)
+	if sig == "" {
+		return false
 	}
-	return hmac.Equal([]byte(r.Header.Get("X-Outbox-Token")), []byte(m.deps.OutboxToken))
+	want := nucleus.SignWebhookBody(m.deps.OutboxSecret, body)
+	return hmac.Equal([]byte(want), []byte(sig))
 }
 
 // decodeOutboxPayload decodes the "payload" field of a delivery according to
@@ -172,11 +175,10 @@ func decodeOutboxPayload(encoding string, field json.RawMessage) ([]byte, error)
 }
 
 // outboxHook is the delivery target of the framework's outbox webhook bridge.
-// Deliveries are authenticated by the bridge's HMAC body signature (legacy
-// static token while the pinned nucleus does not sign) and the payload is
-// decoded per the declared X-Outbox-Payload-Encoding. Delivery is
-// at-least-once, so the handler is idempotent: an already-confirmed order is
-// a no-op.
+// Deliveries are authenticated by the bridge's HMAC body signature (required;
+// see authenticateOutboxDelivery) and the payload is decoded per the declared
+// X-Outbox-Payload-Encoding. Delivery is at-least-once, so the handler is
+// idempotent: an already-confirmed order is a no-op.
 func (m *module) outboxHook(c *nucleus.Context) error {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {

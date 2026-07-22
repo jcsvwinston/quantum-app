@@ -23,7 +23,7 @@ import (
 // while the pins predate it).
 const payloadEncodingHeader = "X-Outbox-Payload-Encoding"
 
-func outboxSecret() string { return envOr("QA_OUTBOX_SECRET", "dev-outbox-secret") }
+func outboxSecret() string { return envOr("QA_OUTBOX_SECRET", "ci-e2e-outbox-secret") }
 
 // postRaw POSTs body with the given extra headers and returns status + body.
 func postRaw(t *testing.T, url string, body []byte, headers map[string]string) (int, string) {

@@ -36,6 +36,32 @@ Current set: **Quantum 1.9.0** (quark v1.4.0 · nucleus v1.5.0 · orbit v1.5.0).
 - `suite-manifest.yaml`: an honest, CI-gated map of which certified-suite surfaces
   this app executes, which it doesn't, and why
 
+## Deployment secrets (fail-closed)
+
+Credentials have **no defaults baked into the source tree** — a default secret
+in a public repo is a public secret. The app is fail-closed: it refuses to
+start (a clear `log.Fatalf`, non-zero exit) if a required deployment secret is
+unset, empty, or still set to one of the repo's `dev-`/example placeholder
+values. This is deliberate for a reference app others copy: copying the example
+config into production must fail loud, not ship a known credential.
+
+| Variable | Kind | Required? | Notes |
+|---|---|---|---|
+| `WAREHOUSE_OUTBOX_SECRET` | **deployment secret** | **always** | HMAC secret the outbox webhook bridge signs with and `/hooks/outbox` verifies. No default; rejects `dev-outbox-secret`. |
+| `WAREHOUSE_OPS_PASSWORD` | **deployment secret** | **always** | Seeds the operations login. No default; rejects `warehouse-ops`. |
+| `WAREHOUSE_PG_DSN` / `WAREHOUSE_PG_REPLICA_DSN` / `WAREHOUSE_MYSQL_DSN` | non-secret dev setting | no | Default to **localhost** DSNs for local dev only; a real deployment overrides them. A localhost URL is not itself a production secret, so these stay `envOr`. |
+| `WAREHOUSE_MAIL_FROM`, `WAREHOUSE_OPS_EMAIL`, `WAREHOUSE_ADMIN_USER`, `WAREHOUSE_ADMIN_EMAIL` | non-secret label | no | Addresses/usernames, not credentials. |
+| `WAREHOUSE_ADMIN_PASSWORD` | credential (out of scope here) | no | Still `envOr` with a placeholder default; see the security note below. |
+
+The boundary in one line: **deployment secrets (`WAREHOUSE_OUTBOX_SECRET`,
+`WAREHOUSE_OPS_PASSWORD`) are mandatory in any non-CI deployment**; localhost
+DSNs and non-credential labels may keep their dev defaults. CI/E2E export
+clearly-CI values (e.g. `ci-e2e-outbox-secret`), never a `dev-` one.
+
+> Security note: `WAREHOUSE_ADMIN_PASSWORD` (the orbit panel bootstrap password)
+> is also a credential-with-default and should be fail-closed the same way; it
+> is left as `envOr` here because it is outside this change's scope.
+
 ## Getting started
 
 See [`docs/TUTORIAL.md`](docs/TUTORIAL.md) for the full walkthrough — from
@@ -45,6 +71,10 @@ See [`docs/TUTORIAL.md`](docs/TUTORIAL.md) for the full walkthrough — from
 docker compose up -d --wait   # PG (+streaming replica), MySQL, Redis, MinIO, Mailpit
 ./scripts/e2e_run.sh          # builds the binary, boots it, runs the E2E suite
 ```
+
+`scripts/e2e_run.sh` exports the required secrets with clearly-CI values, so the
+fail-closed startup passes; running the binary by hand needs them set (see the
+tutorial).
 
 ## License
 

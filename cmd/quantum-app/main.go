@@ -11,6 +11,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
@@ -25,6 +26,11 @@ import (
 	"github.com/jcsvwinston/quantum-app/internal/warehouse"
 )
 
+// envOr reads an environment variable with a fallback. Use it only for
+// NON-SECRET deployment settings that have a safe, non-privileged default —
+// localhost DSNs for development, sender addresses, panel labels. Anything
+// that grants access (see mustEnv) must never have a default baked into the
+// source tree.
 func envOr(key, fallback string) string {
 	if v, ok := os.LookupEnv(key); ok {
 		return v
@@ -32,10 +38,57 @@ func envOr(key, fallback string) string {
 	return fallback
 }
 
+// exampleSecretValues are the placeholder credential values that appear in
+// this repository's example config and scripts. They are public by definition
+// (anyone can read them here), so a real deployment that still carries one is
+// not configured — it is exposed. mustEnv rejects them explicitly so copying
+// an example .env into production fails loud instead of silently shipping a
+// known credential.
+var exampleSecretValues = map[string]string{
+	"dev-outbox-secret": "the example outbox HMAC secret from config/e2e.yaml",
+	"dev-outbox-token":  "the example (now removed) legacy outbox token",
+	"warehouse-ops":     "the example ops password from the tutorial",
+}
+
+// validateDeploymentSecret checks one required deployment secret. It returns a
+// non-nil error explaining why the value is unacceptable — unset, empty, or a
+// public example value from the repo — and nil when the value is safe to use.
+// Kept separate from mustEnv so it is unit-testable without exiting the
+// process.
+func validateDeploymentSecret(key, value string, present bool) error {
+	if !present || value == "" {
+		return fmt.Errorf("%s must be set to a deployment secret: it grants access and has no safe default (a default in the source tree would be a public credential); refusing to start", key)
+	}
+	if what, ok := exampleSecretValues[value]; ok {
+		return fmt.Errorf("%s is set to %q — %s, not a secret. Generate your own value; refusing to start", key, value, what)
+	}
+	return nil
+}
+
+// mustEnv returns the value of a required deployment secret, aborting the
+// process with a clear message when the variable is unset, empty, or still
+// holds a public example value. Fail-closed: a misconfigured secret must stop
+// startup, never fall back to a default that lives in the repository.
+func mustEnv(key string) string {
+	v, ok := os.LookupEnv(key)
+	if err := validateDeploymentSecret(key, v, ok); err != nil {
+		log.Fatalf("quantum-app: %v", err)
+	}
+	return v
+}
+
 func main() {
 	configPath := flag.String("config", "nucleus.yml", "path to the nucleus config file")
 	flag.Parse()
 	ctx := context.Background()
+
+	// Deployment secrets are fail-closed: they grant access and have no safe
+	// default, so validate them before opening any connection. A misconfigured
+	// deploy dies here — immediately and loud — rather than booting on a
+	// credential that is public in the source tree. See mustEnv; the
+	// secret/non-secret boundary is documented in README.md and docs/TUTORIAL.md.
+	outboxSecret := mustEnv("WAREHOUSE_OUTBOX_SECRET")
+	opsPassword := mustEnv("WAREHOUSE_OPS_PASSWORD")
 
 	// Quark clients own the domain schema. The DSNs mirror the databases.*
 	// URLs in the nucleus config (nucleus manages its own pools for sessions,
@@ -74,7 +127,6 @@ func main() {
 	defer my.Close()
 
 	opsEmail := envOr("WAREHOUSE_OPS_EMAIL", "ops@warehouse.local")
-	opsPassword := envOr("WAREHOUSE_OPS_PASSWORD", "warehouse-ops")
 	if err := warehouse.Migrate(ctx, pg, my, opsEmail, opsPassword); err != nil {
 		log.Fatalf("quantum-app: migrate: %v", err)
 	}
@@ -95,8 +147,7 @@ func main() {
 			PG:           pg,
 			PGRead:       pgRead,
 			MySQL:        my,
-			OutboxSecret: envOr("WAREHOUSE_OUTBOX_SECRET", "dev-outbox-secret"),
-			OutboxToken:  envOr("WAREHOUSE_OUTBOX_TOKEN", "dev-outbox-token"),
+			OutboxSecret: outboxSecret,
 			MailFrom:     envOr("WAREHOUSE_MAIL_FROM", "warehouse@quantum-app.local"),
 		})).
 		Mount(warehouse.AuditModule()).

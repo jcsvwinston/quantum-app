@@ -48,14 +48,16 @@ storage:
 # event back to the app's /hooks/outbox endpoint.
 #
 # Authentication: `secret` makes the bridge sign each body (HMAC-SHA256 in
-# X-Nucleus-Signature) on nucleus releases after v1.4.0; the pinned v1.4.0
-# ignores the key and sends only the legacy X-Outbox-Token header, which the
-# hook still accepts (constant-time) for unsigned deliveries. Both values
-# must match what scripts/e2e_run.sh exports to the app (WAREHOUSE_OUTBOX_*).
+# X-Nucleus-Signature); the pinned nucleus v1.5.0 signs every delivery, and
+# the hook REQUIRES that signature (there is no static-token fallback). The
+# value here must match what scripts/e2e_run.sh exports to the app as
+# WAREHOUSE_OUTBOX_SECRET. This is a CLEARLY-CI value, not a production
+# secret and not one of the `dev-` example values the app now refuses to
+# start on.
 #
 # `payload_encoding: json` opts in to the embedded-JSON payload shape
-# declared via X-Outbox-Payload-Encoding (also ignored by v1.4.0, which
-# emits the classic base64 shape without the header — the hook decodes both).
+# declared via X-Outbox-Payload-Encoding; the e2e-probe bridge below leaves
+# it unset to exercise the classic base64 shape too — the hook decodes both.
 outbox:
   enabled: true
   table_name: nucleus_outbox
@@ -68,10 +70,8 @@ outbox:
       config:
         url: "http://127.0.0.1:58080/hooks/outbox"
         pattern: "orders.*"
-        secret: "dev-outbox-secret"
+        secret: "ci-e2e-outbox-secret"
         payload_encoding: json
-        headers:
-          X-Outbox-Token: "dev-outbox-token"
     # Delivery probe for the E2E suite: e2eprobe.* events go to a listener
     # the test starts, which asserts the bridge-side contract (signature over
     # the raw body, declared payload encoding — this bridge stays on the
@@ -81,4 +81,4 @@ outbox:
       config:
         url: "http://127.0.0.1:58091/probe"
         pattern: "e2eprobe.*"
-        secret: "dev-outbox-secret"
+        secret: "ci-e2e-outbox-secret"

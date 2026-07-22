@@ -32,6 +32,15 @@ type Deps struct {
 	// config.secret). It is a required deployment secret — main wires it from
 	// WAREHOUSE_OUTBOX_SECRET through mustEnv, so it is never empty here.
 	OutboxSecret string
+	// OutboxEncoding is the payload encoding the /hooks/outbox consumer
+	// EXPECTS — it must equal the bridge's `payload_encoding` config
+	// (`json` for this app). The consumer decodes by this configured value,
+	// not by the request's X-Outbox-Payload-Encoding header: that header is
+	// unsigned (SEC-3), so trusting it for the decode would let an attacker
+	// influence parsing. The header is only checked for agreement with this
+	// value (outbox.CheckPayloadEncoding) as defense-in-depth. main wires it
+	// from WAREHOUSE_OUTBOX_ENCODING (default `json`).
+	OutboxEncoding string
 	// MailFrom is the sender address for outbound mail (mirrors the
 	// mail_from config key, which modules cannot read back from the Runtime).
 	MailFrom string

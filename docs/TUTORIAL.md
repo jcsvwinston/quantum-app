@@ -139,13 +139,25 @@ outbox:
       config:
         url: "http://127.0.0.1:58080/hooks/outbox"
         pattern: "orders.*"
-        headers:
-          X-Outbox-Token: "dev-outbox-token"
+        secret: "ci-e2e-outbox-secret"   # HMAC body signature; must equal WAREHOUSE_OUTBOX_SECRET
+        payload_encoding: json
 ```
+
+The bridge signs every delivery (HMAC-SHA256 in `X-Nucleus-Signature`) with
+`secret`, and `/hooks/outbox` **requires** that signature — there is no static
+token fallback. The value here is a clearly-CI placeholder; the app reads the
+same secret from `WAREHOUSE_OUTBOX_SECRET`, and the two must match.
 
 Every key can be overridden with `NUCLEUS_*` environment variables
 (`NUCLEUS_DATABASES__DEFAULT__URL`, `NUCLEUS_PORT`, …), which is how the same
 file serves development and CI.
+
+> **Deployment secrets are fail-closed.** The app refuses to start if
+> `WAREHOUSE_OUTBOX_SECRET` or `WAREHOUSE_OPS_PASSWORD` is unset, empty, or
+> still set to a repo `dev-`/example value — copying an example config into
+> production must fail loud, not ship a public credential. Localhost DSNs and
+> non-credential labels keep their dev defaults; deployment secrets do not.
+> See the README's "Deployment secrets" table for the full boundary.
 
 ## 4. Write the app as nucleus modules
 
@@ -273,15 +285,21 @@ hit the API.
 docker compose up -d --wait          # PG (+replica), MySQL, Redis, MinIO, Mailpit
 go run ./e2e/setup                   # creates the MinIO bucket
 go build -o bin/quantum-app ./cmd/quantum-app
+
+# Deployment secrets are fail-closed: set them or the app refuses to start.
+# These are local placeholders — never a repo `dev-`/example value, which the
+# app rejects. Must match config/e2e.yaml's bridge secret.
+export WAREHOUSE_OUTBOX_SECRET="ci-e2e-outbox-secret"
+export WAREHOUSE_OPS_PASSWORD="ci-e2e-ops-password"
 bin/quantum-app --config config/e2e.yaml
 ```
 
-Try it:
+Try it (log in with the ops password you just set):
 
 ```bash
 curl -s -c /tmp/cj -X POST localhost:58080/api/login \
   -H 'Content-Type: application/json' \
-  -d '{"email":"ops@warehouse.local","password":"warehouse-ops"}'
+  -d '{"email":"ops@warehouse.local","password":"ci-e2e-ops-password"}'
 
 curl -s -b /tmp/cj -X POST localhost:58080/api/products \
   -H 'Content-Type: application/json' \

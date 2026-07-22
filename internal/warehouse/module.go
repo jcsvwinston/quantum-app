@@ -29,13 +29,9 @@ type Deps struct {
 	// OutboxSecret is the shared HMAC secret for the outbox webhook bridge:
 	// /hooks/outbox verifies the bridge's X-Nucleus-Signature body signature
 	// against it (the same value the nucleus config sets as the bridge's
-	// config.secret).
+	// config.secret). It is a required deployment secret — main wires it from
+	// WAREHOUSE_OUTBOX_SECRET through mustEnv, so it is never empty here.
 	OutboxSecret string
-	// OutboxToken is the legacy shared secret sent as a static
-	// X-Outbox-Token header. It authenticates unsigned deliveries only —
-	// nucleus releases up to v1.4.0 do not sign bridge webhooks — and goes
-	// away when the pinned nucleus signs.
-	OutboxToken string
 	// MailFrom is the sender address for outbound mail (mirrors the
 	// mail_from config key, which modules cannot read back from the Runtime).
 	MailFrom string

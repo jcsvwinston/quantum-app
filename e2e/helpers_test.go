@@ -91,7 +91,7 @@ func login(t *testing.T, c *http.Client, base string) string {
 	t.Helper()
 	status := doJSON(t, c, http.MethodPost, base+"/api/login", map[string]string{
 		"email":    envOr("QA_OPS_EMAIL", "ops@warehouse.local"),
-		"password": envOr("QA_OPS_PASSWORD", "warehouse-ops"),
+		"password": envOr("QA_OPS_PASSWORD", "ci-e2e-ops-password"),
 	}, nil)
 	if status != http.StatusOK {
 		t.Fatalf("login: status %d", status)

@@ -2,18 +2,18 @@ module github.com/jcsvwinston/quantum-app
 
 go 1.26.5
 
-// Quantum certified set 1.8.0 — every suite module below is pinned to the
+// Quantum certified set 1.9.0 — every suite module below is pinned to the
 // exact tag certified together in the suite's versions.yaml. These pins move
 // ONLY when a new set is certified (never to intermediate releases), and the
 // app resolves them from the Go module proxy: no go.work, no replace
 // directives. CI enforces both (GOWORK=off + a guard that fails on any
 // go.work in the tree).
 require (
-	github.com/jcsvwinston/nucleus v1.4.0
-	github.com/jcsvwinston/orbit v1.4.4
-	github.com/jcsvwinston/orbit/quarkbridge v0.3.4
-	github.com/jcsvwinston/orbit/quarkdatasource v0.2.6
-	github.com/jcsvwinston/quark v1.3.3
+	github.com/jcsvwinston/nucleus v1.5.0
+	github.com/jcsvwinston/orbit v1.5.0
+	github.com/jcsvwinston/orbit/quarkbridge v0.3.5
+	github.com/jcsvwinston/orbit/quarkdatasource v0.2.7
+	github.com/jcsvwinston/quark v1.4.0
 )
 
 require (
@@ -152,12 +152,12 @@ require (
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
-	golang.org/x/crypto v0.51.0 // indirect
-	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/crypto v0.53.0 // indirect
+	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.45.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/sync v0.21.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/text v0.39.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	google.golang.org/api v0.275.0 // indirect
 	google.golang.org/genproto v0.0.0-20260319201613-d00831a3d3e7 // indirect

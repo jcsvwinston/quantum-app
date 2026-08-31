@@ -18,11 +18,11 @@
 #   not-covered  in reach of the prototype but not exercised (reason given)
 #   out-of-scope deliberately outside the prototype (reason given)
 
-suite: "1.10.0"
+suite: "1.24.0"
 pins:
-  quark: v1.4.0
-  nucleus: v1.6.0
-  orbit: v1.5.1
+  quark: v1.7.1
+  nucleus: v1.21.0
+  orbit: v1.8.13
 
 sources:
   quark: examples/superapp/apisurface.json (S7 surface manifest, 670 symbols)
@@ -30,8 +30,8 @@ sources:
   orbit: contracts/baseline/api_exported_symbols.txt (frozen v1 surface)
 
 notes: >
-  The integration modules orbit/quarkbridge v0.3.6
-  and orbit/quarkdatasource v0.2.7
+  The integration modules orbit/quarkbridge v0.4.8
+  and orbit/quarkdatasource v0.2.17
   publish no machine-readable inventory at their tags, so they cannot
   enter the mechanical denominator; their execution is evidenced through the
   covered orbit/datasource and quark items below (the panel E2E drives Data
@@ -225,6 +225,9 @@ classifications:
   - match: "nucleus:pkg/signals"
     status: not-covered
     reason: "the signals bus is not consumed by the app"
+  - match: "nucleus:pkg/nucleustest"
+    status: not-covered
+    reason: "in-process test kit (boots a nucleus app inside the test process): this app's E2E deliberately drive the SEPARATELY BUILT binary as a real out-of-process deployment (scripts/e2e_run.sh), which is what an external integrator ships. Whether the reference app should ALSO carry an in-process suite on nucleustest is an open question, not a gap this bump can decide"
 
   # ---- orbit: root module -------------------------------------------------
   - match: "orbit:github.com/jcsvwinston/orbit func:Module"

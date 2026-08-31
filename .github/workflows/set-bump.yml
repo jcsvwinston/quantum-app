@@ -112,7 +112,9 @@ jobs:
         env:
           GOWORK: "off"
         run: |
-          set -o pipefail
+          # -e imprescindible: sin él, un gate en rojo dentro del bloque no
+          # detiene a los siguientes y el veredicto lo daría el último.
+          set -eo pipefail
           {
             ./scripts/check_no_workspace.sh
             go build ./...
@@ -134,7 +136,7 @@ jobs:
         env:
           GOWORK: "off"
         run: |
-          set -o pipefail
+          set -eo pipefail
           ./scripts/e2e_run.sh 2>&1 | tee /tmp/e2e.log
 
       - name: Logs de servicios si la E2E falla
@@ -165,6 +167,12 @@ jobs:
           git config user.name  "quantum-set-bump[bot]"
           git config user.email "quantum-set-bump@users.noreply.github.com"
           rm -rf bin
+          # La rama del bump es de esta máquina (el grupo de concurrencia
+          # serializa los bumps), pero re-ejecutar el mismo set debe poder
+          # rehacerla: se trae la ref remota si existe para que
+          # --force-with-lease tenga contra qué comparar en vez de fallar por
+          # «stale info» (checkout@v4 solo trae la rama que disparó el job).
+          git fetch origin "+refs/heads/$RAMA:refs/remotes/origin/$RAMA" || true
           git checkout -B "$RAMA"
           git add -A
           git commit \

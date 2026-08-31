@@ -40,7 +40,14 @@ The workflow is triggered two ways:
   the `require` block that `scripts/print-requires.sh` derives from
   `versions.yaml`.
 - **By hand**, from the Actions tab (`workflow_dispatch`), pasting the same two
-  inputs. Useful to re-run a bump or to try a set before it is certified.
+  inputs (the `require` block pastes fine on a single line — the input field is
+  one line and the parser reads tokens, not lines). Useful to re-run a bump
+  whose dispatch never arrived. Not useful for a set that is not cut yet: its
+  tags do not exist, so `go mod tidy` fails — and a block of pseudo-versions is
+  rejected outright, since a certified set pins published tags. To try the
+  suite's `main` before a cut, move the pins by hand with
+  `go get github.com/jcsvwinston/<mod>@main` and run the gates; that is not a
+  set bump.
 
 What the bump rewrites, from the received `require` block alone: the suite
 versions in `go.mod`, the `Quantum certified set` comment in its header, the

@@ -184,6 +184,12 @@ classifications:
   - match: "nucleus:pkg/outbox"
     status: covered
     evidence: "NewStore + EnqueueTx in the order transaction; framework dispatcher + webhook bridge deliver; e2e/orders_test.go asserts row status and effect"
+  - match: "nucleus:pkg/i18n"
+    status: not-covered
+    reason: "locale negotiation and translated responses: the prototype serves a single locale, so the middleware would mount with nothing to choose between"
+  - match: "nucleus:pkg/cache"
+    status: not-covered
+    reason: "the application-level cache table: the prototype reads through Quark, whose own cache layer is the one it exercises"
   - match: "nucleus:pkg/observability"
     status: covered
     evidence: "the event bus carries quarkbridge SQL to the orbit panel in-process; e2e/admin_test.go TestOrbitLiveFeed asserts events on the feed"

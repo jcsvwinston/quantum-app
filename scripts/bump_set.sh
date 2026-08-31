@@ -69,6 +69,22 @@ for pilar in quark nucleus orbit; do
     || die "el set recibido no trae github.com/jcsvwinston/$pilar — un set certificado siempre trae los tres pilares"
 done
 
+# Un set CERTIFICADO pina tags publicados. Una pseudo-versión
+# (vX.Y.Z-0.<14 dígitos>-<12 hex>) es un commit sin tag, y aquí no cuela por
+# dos razones: la política de este repo es resolver tags exactos del proxy, y
+# el gate de etiquetas humanas compara el pin COMPLETO contra unas etiquetas
+# que sólo pueden decir vX.Y.Z — con pseudo-versiones se pondría rojo por una
+# causa que no es la real. Para ensayar un corte todavía sin tags, mueve los
+# pines a mano con `go get github.com/jcsvwinston/<mod>@main` y corre los
+# gates; no lo hagas pasar por un bump de set.
+# (el patrón NO empieza por '-': un patrón con guion inicial, incluso tras
+# '--', se comporta distinto según la implementación de grep del entorno)
+pseudos="$(printf '%s\n' "$pairs" | grep -E '[0-9]{14}-[0-9a-f]{12}$' | sed 's/^/   /' || true)"
+if [ -n "$pseudos" ]; then
+  printf '%s\n' "$pseudos" >&2
+  die "el bloque recibido trae pseudo-versiones (arriba): eso es un commit sin tag, no un set certificado"
+fi
+
 echo "== set recibido: Quantum $SET =="
 printf '%s\n' "$pairs" | sed 's/^/   /'
 

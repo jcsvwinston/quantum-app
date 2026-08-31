@@ -31,7 +31,7 @@ on:
         required: true
         type: string
       requires:
-        description: "Bloque require del set (salida de scripts/print-requires.sh del paraguas)"
+        description: "Bloque require del set (salida de scripts/print-requires.sh del paraguas; vale pegado en una sola línea)"
         required: true
         type: string
   repository_dispatch:

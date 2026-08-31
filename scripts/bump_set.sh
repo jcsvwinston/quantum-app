@@ -56,10 +56,17 @@ else
   input="$(cat "$REQ")"
 fi
 
-# pares «ruta versión» de módulos de la suite, en el orden recibido.
-pairs="$(printf '%s\n' "$input" \
-  | sed -nE 's#^[[:space:]]*(github\.com/jcsvwinston/[a-z0-9/]+)[[:space:]]+(v[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?)[[:space:]]*$#\1 \2#p')"
-[ -n "$pairs" ] || die "el bloque recibido no contiene ninguna línea 'github.com/jcsvwinston/<mod> vX.Y.Z' — ¿es la salida de print-requires.sh?"
+# Pares «ruta versión» de módulos de la suite, en el orden recibido. El
+# análisis es por TOKENS, no por líneas: el campo `requires` de un
+# workflow_dispatch es un input de una sola línea en la interfaz de GitHub, así
+# que el bloque puede llegar con los saltos aplastados. Con tokens da igual —
+# `require (`, los paréntesis y los tabuladores sobran solos.
+pairs="$(printf '%s\n' "$input" | tr -s '[:space:]' '\n' | awk '
+  /^github\.com\/jcsvwinston\/[a-z0-9\/]+$/ { mod = $0; next }
+  mod != "" && /^v[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$/ { print mod, $0; mod = ""; next }
+  { mod = "" }
+')"
+[ -n "$pairs" ] || die "el bloque recibido no contiene ningún par 'github.com/jcsvwinston/<mod> vX.Y.Z' — ¿es la salida de print-requires.sh?"
 
 # ver_of <ruta-de-módulo> — versión que el set trae para ese módulo (vacío si no).
 ver_of() { printf '%s\n' "$pairs" | awk -v m="$1" '$1 == m { print $2; exit }'; }

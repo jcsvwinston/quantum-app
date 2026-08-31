@@ -18,11 +18,11 @@
 #   not-covered  in reach of the prototype but not exercised (reason given)
 #   out-of-scope deliberately outside the prototype (reason given)
 
-suite: "1.24.0"
+suite: "1.25.0"
 pins:
-  quark: v1.7.1
-  nucleus: v1.21.0
-  orbit: v1.8.13
+  quark: v1.8.0
+  nucleus: v1.22.0
+  orbit: v1.8.14
 
 sources:
   quark: examples/superapp/apisurface.json (S7 surface manifest, 670 symbols)
@@ -30,8 +30,8 @@ sources:
   orbit: contracts/baseline/api_exported_symbols.txt (frozen v1 surface)
 
 notes: >
-  The integration modules orbit/quarkbridge v0.4.8
-  and orbit/quarkdatasource v0.2.17
+  The integration modules orbit/quarkbridge v0.4.9
+  and orbit/quarkdatasource v0.2.18
   publish no machine-readable inventory at their tags, so they cannot
   enter the mechanical denominator; their execution is evidenced through the
   covered orbit/datasource and quark items below (the panel E2E drives Data
@@ -184,6 +184,12 @@ classifications:
   - match: "nucleus:pkg/outbox"
     status: covered
     evidence: "NewStore + EnqueueTx in the order transaction; framework dispatcher + webhook bridge deliver; e2e/orders_test.go asserts row status and effect"
+  - match: "nucleus:pkg/i18n"
+    status: not-covered
+    reason: "locale negotiation and translated responses: the prototype serves a single locale, so the middleware would mount with nothing to choose between"
+  - match: "nucleus:pkg/cache"
+    status: not-covered
+    reason: "the application-level cache table: the prototype reads through Quark, whose own cache layer is the one it exercises"
   - match: "nucleus:pkg/observability"
     status: covered
     evidence: "the event bus carries quarkbridge SQL to the orbit panel in-process; e2e/admin_test.go TestOrbitLiveFeed asserts events on the feed"

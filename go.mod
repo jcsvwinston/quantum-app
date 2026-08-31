@@ -2,18 +2,18 @@ module github.com/jcsvwinston/quantum-app
 
 go 1.26.6
 
-// Quantum certified set 1.24.0 — every suite module below is pinned to the
+// Quantum certified set 1.25.0 — every suite module below is pinned to the
 // exact tag certified together in the suite's versions.yaml. These pins move
 // ONLY when a new set is certified (never to intermediate releases), and the
 // app resolves them from the Go module proxy: no go.work, no replace
 // directives. CI enforces both (GOWORK=off + a guard that fails on any
 // go.work in the tree).
 require (
-	github.com/jcsvwinston/nucleus v1.21.0
-	github.com/jcsvwinston/orbit v1.8.13
-	github.com/jcsvwinston/orbit/quarkbridge v0.4.8
-	github.com/jcsvwinston/orbit/quarkdatasource v0.2.17
-	github.com/jcsvwinston/quark v1.7.1
+	github.com/jcsvwinston/nucleus v1.22.0
+	github.com/jcsvwinston/orbit v1.8.14
+	github.com/jcsvwinston/orbit/quarkbridge v0.4.9
+	github.com/jcsvwinston/orbit/quarkdatasource v0.2.18
+	github.com/jcsvwinston/quark v1.8.0
 )
 
 require (

@@ -23,6 +23,43 @@ ad hoc, and never to intermediate module releases. Builds and CI run with
 
 Current set: **Quantum 1.10.0** (quark v1.4.0 · nucleus v1.6.0 · orbit v1.5.1).
 
+### Who moves the pin
+
+**A workflow, not a person.** The pin is moved exclusively by
+[`.github/workflows/set-bump.yml`](.github/workflows/set-bump.yml), which runs
+[`scripts/bump_set.sh`](scripts/bump_set.sh) and opens a pull request — it never
+pushes to `main`. When this was a manual chore the pin fossilized at set 1.10.0
+while the suite reached 1.24.0: fourteen certified sets with no external
+consumer actually building against them.
+
+The workflow is triggered two ways:
+
+- **From the suite's release train**, at the end of the run that certifies a
+  set: the umbrella repo's `scripts/train/dispatch-app-bump.sh` sends a
+  `repository_dispatch` (`quantum-set-certified`) carrying the set number and
+  the `require` block that `scripts/print-requires.sh` derives from
+  `versions.yaml`.
+- **By hand**, from the Actions tab (`workflow_dispatch`), pasting the same two
+  inputs. Useful to re-run a bump or to try a set before it is certified.
+
+What the bump rewrites, from the received `require` block alone: the suite
+versions in `go.mod`, the `Quantum certified set` comment in its header, the
+"Current set" line above, the `go get …@vX` lines in
+[`docs/TUTORIAL.md`](docs/TUTORIAL.md), and `suite:`/`pins:` in
+`suite-manifest.yaml` — the surfaces the human-labels gate checks. Then it runs
+`go mod tidy`, the unit gates and the real E2E before opening the PR.
+
+Two failure modes, deliberately distinct:
+
+| Symptom | Meaning |
+|---|---|
+| `go mod tidy` fails | the received set does **not resolve** (tags not published yet, incoherent graph). The job dies and opens **no** PR. |
+| the set resolves but a gate fails | this app has **real debt** against the new set — a changed API, or new suite surface not yet classified in `suite-manifest.yaml`. The PR is opened **as a draft** with the gate log in its body, and the job ends red. |
+
+The second row is the point of the whole thing: new public surface in the suite
+lands here as a red gate that a human must classify honestly, which is exactly
+what `suite-manifest.yaml` is for.
+
 ## What it exercises
 
 - HTTP API for products and orders (nucleus router + modules)

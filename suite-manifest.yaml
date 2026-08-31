@@ -30,8 +30,9 @@ sources:
   orbit: contracts/baseline/api_exported_symbols.txt (frozen v1 surface)
 
 notes: >
-  The integration modules orbit/quarkbridge v0.3.6 and orbit/quarkdatasource
-  v0.2.7 publish no machine-readable inventory at their tags, so they cannot
+  The integration modules orbit/quarkbridge v0.3.6
+  and orbit/quarkdatasource v0.2.7
+  publish no machine-readable inventory at their tags, so they cannot
   enter the mechanical denominator; their execution is evidenced through the
   covered orbit/datasource and quark items below (the panel E2E drives Data
   Studio through quarkdatasource, and the live-feed E2E drives quarkbridge

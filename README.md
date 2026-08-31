@@ -21,7 +21,51 @@ suite's `versions.yaml`). They are bumped only when a new set is certified — n
 ad hoc, and never to intermediate module releases. Builds and CI run with
 `GOWORK=off`; a CI guard fails the build if a `go.work` file ever appears in the tree.
 
-Current set: **Quantum 1.10.0** (quark v1.4.0 · nucleus v1.6.0 · orbit v1.5.1).
+Current set: **Quantum 1.24.0** (quark v1.7.1 · nucleus v1.21.0 · orbit v1.8.13).
+
+### Who moves the pin
+
+**A workflow, not a person.** The pin is moved exclusively by
+[`.github/workflows/set-bump.yml`](.github/workflows/set-bump.yml), which runs
+[`scripts/bump_set.sh`](scripts/bump_set.sh) and opens a pull request — it never
+pushes to `main`. When this was a manual chore the pin fossilized at set 1.10.0
+while the suite reached 1.24.0: fourteen certified sets with no external
+consumer actually building against them.
+
+The workflow is triggered two ways:
+
+- **From the suite's release train**, at the end of the run that certifies a
+  set: the umbrella repo's `scripts/train/dispatch-app-bump.sh` sends a
+  `repository_dispatch` (`quantum-set-certified`) carrying the set number and
+  the `require` block that `scripts/print-requires.sh` derives from
+  `versions.yaml`.
+- **By hand**, from the Actions tab (`workflow_dispatch`), pasting the same two
+  inputs (the `require` block pastes fine on a single line — the input field is
+  one line and the parser reads tokens, not lines). Useful to re-run a bump
+  whose dispatch never arrived. Not useful for a set that is not cut yet: its
+  tags do not exist, so `go mod tidy` fails — and a block of pseudo-versions is
+  rejected outright, since a certified set pins published tags. To try the
+  suite's `main` before a cut, move the pins by hand with
+  `go get github.com/jcsvwinston/<mod>@main` and run the gates; that is not a
+  set bump.
+
+What the bump rewrites, from the received `require` block alone: the suite
+versions in `go.mod`, the `Quantum certified set` comment in its header, the
+"Current set" line above, the `go get …@vX` lines in
+[`docs/TUTORIAL.md`](docs/TUTORIAL.md), and `suite:`/`pins:` in
+`suite-manifest.yaml` — the surfaces the human-labels gate checks. Then it runs
+`go mod tidy`, the unit gates and the real E2E before opening the PR.
+
+Two failure modes, deliberately distinct:
+
+| Symptom | Meaning |
+|---|---|
+| `go mod tidy` fails | the received set does **not resolve** (tags not published yet, incoherent graph). The job dies and opens **no** PR. |
+| the set resolves but a gate fails | this app has **real debt** against the new set — a changed API, or new suite surface not yet classified in `suite-manifest.yaml`. The PR is opened **as a draft** with the gate log in its body, and the job ends red. |
+
+The second row is the point of the whole thing: new public surface in the suite
+lands here as a red gate that a human must classify honestly, which is exactly
+what `suite-manifest.yaml` is for.
 
 ## What it exercises
 

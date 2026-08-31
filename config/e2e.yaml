@@ -48,8 +48,8 @@ storage:
 # event back to the app's /hooks/outbox endpoint.
 #
 # Authentication: `secret` makes the bridge sign each body (HMAC-SHA256 in
-# X-Nucleus-Signature); the pinned nucleus v1.6.0 signs every delivery, and
-# the hook REQUIRES that signature (there is no static-token fallback). The
+# X-Nucleus-Signature); the pinned nucleus signs every delivery, and the hook
+# REQUIRES that signature (there is no static-token fallback). The
 # value here must match what scripts/e2e_run.sh exports to the app as
 # WAREHOUSE_OUTBOX_SECRET. This is a CLEARLY-CI value, not a production
 # secret and not one of the `dev-` example values the app now refuses to

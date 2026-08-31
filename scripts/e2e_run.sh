@@ -26,8 +26,11 @@ export QA_ADMIN_USER="${QA_ADMIN_USER:-admin}"
 export QA_ADMIN_PASSWORD="${QA_ADMIN_PASSWORD:-warehouse-admin}"
 # Outbox webhook authentication: QA_OUTBOX_SECRET must match the bridges'
 # config.secret in config/e2e.yaml (HMAC body signature). The pinned nucleus
-# v1.6.0 signs every delivery and the hook requires that signature — there is
-# no legacy static token anymore.
+# signs every delivery and the hook requires that signature — there is no
+# legacy static token anymore.
+# (Sin número de versión a propósito: describe el comportamiento del set
+# pinado, no el pin; un número aquí fosiliza fuera del alcance del gate de
+# etiquetas humanas, que solo vigila README y docs/TUTORIAL.md.)
 export QA_OUTBOX_SECRET="${QA_OUTBOX_SECRET:-ci-e2e-outbox-secret}"
 # Outbox payload encoding the /hooks/outbox consumer EXPECTS. It must equal the
 # bridges' `payload_encoding` in config/e2e.yaml (`json`): the consumer decodes

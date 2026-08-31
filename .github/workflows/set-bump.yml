@@ -1,0 +1,243 @@
+# Bump al set certificado de la suite Quantum.
+#
+# Por qué existe: este repo es el consumidor EXTERNO de referencia y su valor
+# depende de que su pin siga al set certificado. Mientras el bump fue manual,
+# el pin se quedó en el set 1.10.0 con el set vigente en 1.24.0 — catorce sets
+# sin validación externa. Desde aquí el bump lo mueve una máquina, disparada
+# por el tren de releases del paraguas al certificar (scripts/train/
+# dispatch-app-bump.sh → repository_dispatch), o a mano desde la pestaña
+# Actions.
+#
+# Qué hace: reescribe el pin con scripts/bump_set.sh, ejecuta los MISMOS gates
+# que ci.yml (incluida la E2E real contra servicios en Docker) y abre un PR.
+# NUNCA empuja a main: el bump se revisa y se fusiona como cualquier cambio.
+#
+# Fallos y su significado:
+#   - `go mod tidy` en rojo = el set recibido NO resuelve (tags sin publicar,
+#     grafo incoherente). El job muere ahí y NO se abre PR: no hay nada que
+#     revisar.
+#   - gates en rojo con el set resuelto = deuda REAL de este repo contra el
+#     set nuevo (una API que cambió, superficie nueva sin clasificar en
+#     suite-manifest.yaml). Ahí SÍ se abre el PR, en borrador y con el log del
+#     gate en el cuerpo, y el job termina en rojo: el bump imposible se ve, no
+#     se pierde.
+name: Bump al set certificado
+
+on:
+  workflow_dispatch:
+    inputs:
+      set:
+        description: "Versión de SUITE certificada (p. ej. 1.24.0)"
+        required: true
+        type: string
+      requires:
+        description: "Bloque require del set (salida de scripts/print-requires.sh del paraguas; vale pegado en una sola línea)"
+        required: true
+        type: string
+  repository_dispatch:
+    # Lo dispara el paraguas al cerrar el tren:
+    #   gh api repos/jcsvwinston/quantum-app/dispatches \
+    #     -f event_type=quantum-set-certified \
+    #     -f client_payload[set]=1.24.0 -f client_payload[requires]="$(scripts/print-requires.sh)"
+    types: [quantum-set-certified]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  # Un bump a la vez: dos sets certificados seguidos no deben pisarse la rama.
+  group: set-bump
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: reescribe el pin · gates · PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Normalizar la entrada (dispatch manual o del paraguas)
+        id: entrada
+        env:
+          IN_SET: ${{ inputs.set || github.event.client_payload.set }}
+          IN_REQUIRES: ${{ inputs.requires || github.event.client_payload.requires }}
+        run: |
+          set -euo pipefail
+          if [ -z "${IN_SET:-}" ] || [ -z "${IN_REQUIRES:-}" ]; then
+            echo "::error::falta 'set' o 'requires' en la entrada del dispatch" >&2
+            exit 1
+          fi
+          case "$IN_SET" in
+            [0-9]*.[0-9]*.[0-9]*) : ;;
+            *) echo "::error::set '$IN_SET' no es una versión de suite X.Y.Z" >&2; exit 1 ;;
+          esac
+          printf '%s\n' "$IN_REQUIRES" > /tmp/set-requires.txt
+          echo "Bloque require recibido:"
+          sed 's/^/  /' /tmp/set-requires.txt
+          echo "set=$IN_SET" >> "$GITHUB_OUTPUT"
+          echo "rama=chore/set-$IN_SET" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # El bump PRIMERO y el toolchain DESPUÉS: bump_set.sh puede subir la
+      # directiva `go` de go.mod (un set nuevo puede exigir un Go más nuevo),
+      # así que setup-go vuelve a correr abajo con el go.mod ya reescrito.
+      - name: Reescribir el pin al set recibido
+        run: ./scripts/bump_set.sh --set "${{ steps.entrada.outputs.set }}" --requires /tmp/set-requires.txt
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: ¿Hay algo que bumpear?
+        id: cambios
+        run: |
+          set -euo pipefail
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "El árbol ya está en el set ${{ steps.entrada.outputs.set }} — nada que hacer (bump idempotente)."
+            echo "hay=no" >> "$GITHUB_OUTPUT"
+          else
+            git --no-pager diff --stat
+            echo "hay=si" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ---- gates: los MISMOS que ci.yml, sobre el árbol ya bumpeado --------
+      - name: Gates (build · vet · tests · workspace · manifiesto · fixtures)
+        if: steps.cambios.outputs.hay == 'si'
+        id: gates
+        continue-on-error: true
+        env:
+          GOWORK: "off"
+        run: |
+          # -e imprescindible: sin él, un gate en rojo dentro del bloque no
+          # detiene a los siguientes y el veredicto lo daría el último.
+          set -eo pipefail
+          {
+            ./scripts/check_no_workspace.sh
+            go build ./...
+            go build -o bin/quantum-app ./cmd/quantum-app
+            go vet ./...
+            go test ./...
+            ./scripts/check_suite_manifest.sh
+            ./scripts/guard_fixtures.sh
+          } 2>&1 | tee /tmp/gates.log
+
+      - name: Levantar servicios reales (PG + réplica, MySQL, Redis, MinIO, Mailpit)
+        if: steps.cambios.outputs.hay == 'si' && steps.gates.outcome == 'success'
+        run: docker compose up -d --wait
+
+      - name: E2E contra el binario real
+        if: steps.cambios.outputs.hay == 'si' && steps.gates.outcome == 'success'
+        id: e2e
+        continue-on-error: true
+        env:
+          GOWORK: "off"
+        run: |
+          set -eo pipefail
+          ./scripts/e2e_run.sh 2>&1 | tee /tmp/e2e.log
+
+      - name: Logs de servicios si la E2E falla
+        if: steps.e2e.outcome == 'failure'
+        run: docker compose logs --tail 100
+
+      - name: Bajar servicios
+        if: always() && steps.cambios.outputs.hay == 'si' && steps.gates.outcome == 'success'
+        run: docker compose down -v
+
+      # ---- PR ---------------------------------------------------------------
+      - name: Abrir (o actualizar) el PR del bump
+        if: steps.cambios.outputs.hay == 'si'
+        id: pr
+        env:
+          # Un PAT opcional evita la trampa conocida: un PR abierto con
+          # GITHUB_TOKEN NO dispara los workflows `pull_request`, así que
+          # queda sin checks. Con el PAT el CI del PR corre solo; sin él, los
+          # gates de ESTE job son la evidencia y el cuerpo del PR lo dice.
+          GH_TOKEN: ${{ secrets.QUANTUM_APP_PR_TOKEN || github.token }}
+          CON_PAT: ${{ secrets.QUANTUM_APP_PR_TOKEN != '' }}
+          SET: ${{ steps.entrada.outputs.set }}
+          RAMA: ${{ steps.entrada.outputs.rama }}
+          GATES: ${{ steps.gates.outcome }}
+          E2E: ${{ steps.e2e.outcome }}
+        run: |
+          set -euo pipefail
+          git config user.name  "quantum-set-bump[bot]"
+          git config user.email "quantum-set-bump@users.noreply.github.com"
+          rm -rf bin
+          # La rama del bump es de esta máquina (el grupo de concurrencia
+          # serializa los bumps), pero re-ejecutar el mismo set debe poder
+          # rehacerla: se trae la ref remota si existe para que
+          # --force-with-lease tenga contra qué comparar en vez de fallar por
+          # «stale info» (checkout@v4 solo trae la rama que disparó el job).
+          git fetch origin "+refs/heads/$RAMA:refs/remotes/origin/$RAMA" || true
+          git checkout -B "$RAMA"
+          git add -A
+          git commit \
+            -m "chore(set): alinea el pin al set certificado Quantum $SET" \
+            -m "Reescrito por .github/workflows/set-bump.yml (scripts/bump_set.sh) con el bloque require que el paraguas emite para el set certificado." \
+            -m "Gates de este bump: unitarios/manifiesto=$GATES, E2E=$E2E."
+          git push --force-with-lease origin "$RAMA"
+
+          cuerpo=$(mktemp)
+          {
+            echo "Bump automatizado al set certificado **Quantum $SET**."
+            echo
+            echo "Pins tras el bump:"
+            echo '```'
+            awk '$1 ~ /^github\.com\/jcsvwinston\// && $2 ~ /^v[0-9]/ { print $1, $2 }' go.mod
+            echo '```'
+            echo
+            echo "| gate | resultado |"
+            echo "|---|---|"
+            echo "| build · vet · tests · workspace · suite-manifest · guard-fixtures | \`$GATES\` |"
+            echo "| E2E (servicios reales en Docker) | \`$E2E\` |"
+            echo
+            if [ "$GATES" != "success" ] || [ "$E2E" != "success" ]; then
+              echo "> Este PR sale **en borrador**: con el set resuelto, algún gate está en rojo."
+              echo "> Eso es deuda de ESTE repo contra el set nuevo (una API que cambió, o"
+              echo "> superficie nueva de la suite sin clasificar en \`suite-manifest.yaml\`),"
+              echo "> no un fallo del bump. Cola del log:"
+              echo '```'
+              tail -40 /tmp/gates.log 2>/dev/null || true
+              tail -40 /tmp/e2e.log 2>/dev/null || true
+              echo '```'
+              echo
+            fi
+            if [ "$CON_PAT" != "true" ]; then
+              echo "> Abierto con \`GITHUB_TOKEN\`: GitHub **no** dispara los workflows"
+              echo "> \`pull_request\` de un PR creado por ese token, así que este PR aparece"
+              echo "> sin checks. La evidencia son los gates de la corrida que lo abrió"
+              echo "> ([run](${GITHUB_SERVER_URL:-https://github.com}/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID))."
+              echo "> Para que corra el CI del PR: empuja un commit vacío a la rama, o"
+              echo "> define el secreto \`QUANTUM_APP_PR_TOKEN\`."
+              echo
+            fi
+            echo "Disparado por: \`${{ github.event_name }}\`."
+          } > "$cuerpo"
+
+          existente=$(gh pr list --head "$RAMA" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existente" ]; then
+            gh pr edit "$existente" --body-file "$cuerpo"
+            echo "PR actualizado: #$existente"
+          else
+            draft=""
+            if [ "$GATES" != "success" ] || [ "$E2E" != "success" ]; then draft="--draft"; fi
+            gh pr create --head "$RAMA" --base main $draft \
+              --title "chore(set): alinea el pin al set certificado Quantum $SET" \
+              --body-file "$cuerpo"
+          fi
+
+      - name: Veredicto
+        if: steps.cambios.outputs.hay == 'si'
+        run: |
+          set -euo pipefail
+          gates='${{ steps.gates.outcome }}'
+          e2e='${{ steps.e2e.outcome }}'
+          if [ "$gates" != "success" ] || [ "$e2e" != "success" ]; then
+            echo "::error::el bump al set ${{ steps.entrada.outputs.set }} está abierto en borrador pero sus gates NO pasan (gates=$gates, e2e=$e2e)"
+            exit 1
+          fi
+          echo "Bump al set ${{ steps.entrada.outputs.set }} en verde y con PR abierto."

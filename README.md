@@ -21,7 +21,7 @@ suite's `versions.yaml`). They are bumped only when a new set is certified — n
 ad hoc, and never to intermediate module releases. Builds and CI run with
 `GOWORK=off`; a CI guard fails the build if a `go.work` file ever appears in the tree.
 
-Current set: **Quantum 1.25.0** (quark v1.8.0 · nucleus v1.22.0 · orbit v1.8.14).
+Current set: **Quantum 1.28.0** (quark v1.11.0 · nucleus v1.24.0 · orbit v1.9.2).
 
 ### Who moves the pin
 

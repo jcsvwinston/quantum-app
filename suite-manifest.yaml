@@ -18,11 +18,11 @@
 #   not-covered  in reach of the prototype but not exercised (reason given)
 #   out-of-scope deliberately outside the prototype (reason given)
 
-suite: "1.25.0"
+suite: "1.26.2"
 pins:
-  quark: v1.8.0
-  nucleus: v1.22.0
-  orbit: v1.8.14
+  quark: v1.10.1
+  nucleus: v1.23.2
+  orbit: v1.8.25
 
 sources:
   quark: examples/superapp/apisurface.json (S7 surface manifest, 670 symbols)
@@ -30,8 +30,8 @@ sources:
   orbit: contracts/baseline/api_exported_symbols.txt (frozen v1 surface)
 
 notes: >
-  The integration modules orbit/quarkbridge v0.4.9
-  and orbit/quarkdatasource v0.2.18
+  The integration modules orbit/quarkbridge v1.8.19
+  and orbit/quarkdatasource v1.8.19
   publish no machine-readable inventory at their tags, so they cannot
   enter the mechanical denominator; their execution is evidenced through the
   covered orbit/datasource and quark items below (the panel E2E drives Data

@@ -17,7 +17,7 @@ require (
 )
 
 require (
-	github.com/go-sql-driver/mysql v1.10.0
+	github.com/go-sql-driver/mysql v1.10.1
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/jcsvwinston/nucleus/drivers/mysql v0.1.3
 	github.com/jcsvwinston/nucleus/drivers/postgres v0.1.3

@@ -41,9 +41,14 @@ on:
     #     -f client_payload[set]=1.24.0 -f client_payload[requires]="$(scripts/print-requires.sh)"
     types: [quantum-set-certified]
 
+# Este workflow YA declaraba `contents: write` + `pull-requests: write` a
+# nivel de workflow, así que aquí no se aprieta ningún token por defecto: lo
+# que cambia es DÓNDE vive esa escritura. Baja al ÚNICO job que la usa (ver el
+# bloque `permissions:` de `bump`), y arriba queda `contents: read` como
+# suelo. Para `bump` el permiso efectivo es el mismo de antes; lo que gana es
+# el job de solo lectura que se añada mañana, que hereda el suelo.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   # Un bump a la vez: dos sets certificados seguidos no deben pisarse la rama.
@@ -54,6 +59,11 @@ jobs:
   bump:
     name: reescribe el pin · gates · PR
     runs-on: ubuntu-latest
+    permissions:
+      # empuja la rama chore/set-X.Y.Z con el pin reescrito (nunca a main)
+      contents: write
+      # abre o actualiza el PR del bump con `gh pr create` / `gh pr edit`
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
 

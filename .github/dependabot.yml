@@ -1,0 +1,47 @@
+# Dependabot de quantum-app (arco A3). Este repo tiene UN solo módulo Go (la
+# raíz) y dos workflows, así que solo hay dos ecosistemas que mantener. Se
+# nota que hasta ahora no había bot: los workflows siguen en checkout@v4 y
+# setup-go@v5, mientras nucleus, orbit y el paraguas ya están en v7. Ojo con
+# leer eso como «toda la suite menos este repo»: quark tampoco tiene bot y
+# también sigue en v4/v5. Esa mitad de QM-14 queda ABIERTA en el registro de
+# la auditoría de madurez 2026-09-03 y este PR no la cierra.
+#
+# Los pines de la suite quedan FUERA del bot a propósito. Los mueve
+# .github/workflows/set-bump.yml al certificarse un set, en bloque y con los
+# mismos gates que el CI (scripts/bump_set.sh reescribe TODOS los require de
+# github.com/jcsvwinston/* de una vez, más las etiquetas humanas). Un PR del
+# bot que subiera uno solo dejaría el árbol pinado a una mezcla que ningún set
+# certificó: lo cazaría check_suite_manifest.sh, y arreglarlo cuesta más que
+# el bump que pretendía ahorrar.
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      go-deps:
+        patterns: ["*"]
+    ignore:
+      # El set certificado, no el bot: nucleus, quark, orbit y sus módulos
+      # hermanos (drivers, exporters, providers, quarkbridge,
+      # quarkdatasource) se mueven juntos desde el paraguas.
+      - dependency-name: github.com/jcsvwinston/nucleus
+      - dependency-name: github.com/jcsvwinston/nucleus/*
+      - dependency-name: github.com/jcsvwinston/quark
+      - dependency-name: github.com/jcsvwinston/quark/*
+      - dependency-name: github.com/jcsvwinston/orbit
+      - dependency-name: github.com/jcsvwinston/orbit/*
+    commit-message:
+      prefix: "chore(deps)"
+    labels: [dependencies]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "chore(ci)"
+    labels: [dependencies]

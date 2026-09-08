@@ -12,6 +12,14 @@ on:
     branches: [main]
   pull_request:
 
+# Token mínimo: los dos jobs solo leen el árbol (checkout) y compilan, y este
+# workflow no declaraba `permissions:` en absoluto. Sin el bloque, su alcance
+# lo decide un ajuste del repositorio que no se ve desde un clon y que puede
+# cambiar sin tocar el árbol (hoy está en «read» aquí, pero en «write» en
+# quark, nucleus y orbit). Declarado, deja de depender de ese ajuste.
+permissions:
+  contents: read
+
 env:
   GOWORK: "off"
 

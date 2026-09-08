@@ -88,7 +88,7 @@ jobs:
           echo "set=$IN_SET" >> "$GITHUB_OUTPUT"
           echo "rama=chore/set-$IN_SET" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
@@ -98,7 +98,7 @@ jobs:
       - name: Reescribir el pin al set recibido
         run: ./scripts/bump_set.sh --set "${{ steps.entrada.outputs.set }}" --requires /tmp/set-requires.txt
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 

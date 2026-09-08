@@ -20,8 +20,18 @@ import (
 	"github.com/jcsvwinston/orbit/quarkdatasource"
 	"github.com/jcsvwinston/quark"
 
-	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	// Since Quantum 1.26.0 the database drivers, the cloud storage backends
+	// and the telemetry exporters ship as their own modules: the framework
+	// links none of them, and the application imports the ones its config
+	// names. Each driver module registers the database/sql driver AND the
+	// error classifier (unique violation, deadlock, transient) — a plain
+	// driver import would open the connection but answer false to all three.
+	_ "github.com/jcsvwinston/nucleus/drivers/mysql"
+	_ "github.com/jcsvwinston/nucleus/drivers/postgres"
+	_ "github.com/jcsvwinston/nucleus/exporters/prometheus"
+	_ "github.com/jcsvwinston/nucleus/providers/storage-s3"
+	_ "github.com/jcsvwinston/quark/drivers/mysql"
+	_ "github.com/jcsvwinston/quark/drivers/postgres"
 
 	"github.com/jcsvwinston/quantum-app/internal/warehouse"
 )

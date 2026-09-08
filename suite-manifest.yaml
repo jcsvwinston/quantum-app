@@ -30,8 +30,8 @@ sources:
   orbit: contracts/baseline/api_exported_symbols.txt (frozen v1 surface)
 
 notes: >
-  The integration modules orbit/quarkbridge v1.8.21
-  and orbit/quarkdatasource v1.8.22
+  The integration modules orbit/quarkbridge v1.8.20
+  and orbit/quarkdatasource v1.8.21
   publish no machine-readable inventory at their tags, so they cannot
   enter the mechanical denominator; their execution is evidenced through the
   covered orbit/datasource and quark items below (the panel E2E drives Data
@@ -199,6 +199,45 @@ classifications:
   - match: "nucleus:pkg/health"
     status: covered
     evidence: "scripts/e2e_run.sh readiness gate requires /healthz to answer 200 before the suite runs"
+
+  # ---- nucleus: contract packages listed since v1.24.0 (plugin contracts
+  # and the seams the provider modules register through) ---------------------
+  - match: "nucleus:pkg/auth/sessionstore"
+    status: covered
+    evidence: "config/e2e.yaml session_store: redis resolves through the store registry; e2e/sessions_test.go asserts the session key in Redis"
+  - match: "nucleus:pkg/db/driver"
+    status: covered
+    evidence: "the postgres and mysql driver modules register through it at boot (blank imports in cmd/quantum-app/main.go); every E2E opens both aliases"
+  - match: "nucleus:pkg/storage/provider"
+    status: covered
+    evidence: "the storage-s3 provider module registers through it; e2e/storage_test.go asserts the object in MinIO"
+  - match: "nucleus:pkg/auth/backend"
+    status: not-covered
+    reason: "the pluggable admin-user backend contract: the prototype uses the session manager and the password helpers, not a custom backend"
+  - match: "nucleus:pkg/auth/backend/backendtest"
+    status: out-of-scope
+    reason: "conformance kit for backend implementers; the app implements no backend"
+  - match: "nucleus:pkg/auth/federated"
+    status: not-covered
+    reason: "federated login (OIDC/SAML) is not configured: sessions are local"
+  - match: "nucleus:pkg/auth/secrets"
+    status: not-covered
+    reason: "secret resolvers are not used: config/e2e.yaml carries plain values for the test services"
+  - match: "nucleus:pkg/db/driver/drivertest"
+    status: out-of-scope
+    reason: "conformance kit for driver implementers; the app implements no driver"
+  - match: "nucleus:pkg/observe/exporter"
+    status: not-covered
+    reason: "the exporter contract (otlp/prometheus modules): the prototype enables no exporter"
+  - match: "nucleus:pkg/router/interceptor"
+    status: not-covered
+    reason: "the interceptor contract for module authors: the app registers none"
+  - match: "nucleus:pkg/tasks/providers/asynq"
+    status: not-covered
+    reason: "no scheduled tasks in the prototype (background work goes through the outbox)"
+  - match: "nucleus:pkg/tasks/providers/memory"
+    status: not-covered
+    reason: "no scheduled tasks in the prototype (background work goes through the outbox)"
 
   # ---- nucleus: public packages the app does not exercise -----------------
   - match: "nucleus:pkg/model"

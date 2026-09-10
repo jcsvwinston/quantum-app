@@ -62,7 +62,14 @@ fi
 # que el bloque puede llegar con los saltos aplastados. Con tokens da igual —
 # `require (`, los paréntesis y los tabuladores sobran solos.
 pairs="$(printf '%s\n' "$input" | tr -s '[:space:]' '\n' | awk '
-  /^github\.com\/jcsvwinston\/[a-z0-9\/]+$/ { mod = $0; next }
+  # La clase de caracteres lleva GUION, punto y guion bajo: sin el guion, las
+  # rutas `providers/secrets-aws`, `providers/storage-azure`,
+  # `providers/storage-gcs` y `providers/storage-s3` no casaban, se caían del
+  # análisis en silencio y el paso siguiente las declaraba «SIN COBERTURA en
+  # el set recibido» — un mensaje que acusa al emisor de mandar un bloque
+  # incompleto cuando el bloque venía entero. Bloqueó el anuncio del set
+  # 1.30.0. Un módulo de Go admite más que [a-z0-9/] en su ruta.
+  /^github\.com\/jcsvwinston\/[a-zA-Z0-9._\/-]+$/ { mod = $0; next }
   mod != "" && /^v[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$/ { print mod, $0; mod = ""; next }
   { mod = "" }
 ')"

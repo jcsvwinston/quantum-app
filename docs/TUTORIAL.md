@@ -27,11 +27,11 @@ five tags are certified together upstream (see the suite's `versions.yaml`),
 and Go's version resolution keeps them exact as long as nothing requires newer.
 
 ```bash
-go get github.com/jcsvwinston/nucleus@v1.25.0
-go get github.com/jcsvwinston/quark@v1.12.0
-go get github.com/jcsvwinston/orbit@v1.9.3
-go get github.com/jcsvwinston/orbit/quarkbridge@v1.8.21
-go get github.com/jcsvwinston/orbit/quarkdatasource@v1.8.22
+go get github.com/jcsvwinston/nucleus@v1.28.0
+go get github.com/jcsvwinston/quark@v1.14.0
+go get github.com/jcsvwinston/orbit@v1.9.6
+go get github.com/jcsvwinston/orbit/quarkbridge@v1.8.24
+go get github.com/jcsvwinston/orbit/quarkdatasource@v1.8.25
 ```
 
 You also need the SQL drivers your engines use (quark auto-detects the dialect

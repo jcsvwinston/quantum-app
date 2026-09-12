@@ -2,29 +2,29 @@ module github.com/jcsvwinston/quantum-app
 
 go 1.26.6
 
-// Quantum certified set 1.29.0 — every suite module below is pinned to the
+// Quantum certified set 1.32.0 — every suite module below is pinned to the
 // exact tag certified together in the suite's versions.yaml. These pins move
 // ONLY when a new set is certified (never to intermediate releases), and the
 // app resolves them from the Go module proxy: no go.work, no replace
 // directives. CI enforces both (GOWORK=off + a guard that fails on any
 // go.work in the tree).
 require (
-	github.com/jcsvwinston/nucleus v1.25.0
-	github.com/jcsvwinston/orbit v1.9.3
-	github.com/jcsvwinston/orbit/quarkbridge v1.8.21
-	github.com/jcsvwinston/orbit/quarkdatasource v1.8.22
-	github.com/jcsvwinston/quark v1.12.0
+	github.com/jcsvwinston/nucleus v1.28.0
+	github.com/jcsvwinston/orbit v1.9.6
+	github.com/jcsvwinston/orbit/quarkbridge v1.8.24
+	github.com/jcsvwinston/orbit/quarkdatasource v1.8.25
+	github.com/jcsvwinston/quark v1.14.0
 )
 
 require (
-	github.com/go-sql-driver/mysql v1.10.0
+	github.com/go-sql-driver/mysql v1.10.1
 	github.com/jackc/pgx/v5 v5.10.0
-	github.com/jcsvwinston/nucleus/drivers/mysql v0.1.3
-	github.com/jcsvwinston/nucleus/drivers/postgres v0.1.3
-	github.com/jcsvwinston/nucleus/exporters/prometheus v0.1.3
-	github.com/jcsvwinston/nucleus/providers/storage-s3 v0.1.3
-	github.com/jcsvwinston/quark/drivers/mysql v0.1.3
-	github.com/jcsvwinston/quark/drivers/postgres v0.1.3
+	github.com/jcsvwinston/nucleus/drivers/mysql v0.1.5
+	github.com/jcsvwinston/nucleus/drivers/postgres v0.1.5
+	github.com/jcsvwinston/nucleus/exporters/prometheus v0.1.5
+	github.com/jcsvwinston/nucleus/providers/storage-s3 v0.1.5
+	github.com/jcsvwinston/quark/drivers/mysql v0.2.1
+	github.com/jcsvwinston/quark/drivers/postgres v0.2.1
 	github.com/minio/minio-go/v7 v7.3.0
 	github.com/redis/go-redis/v9 v9.22.0
 	go.yaml.in/yaml/v3 v3.0.5
@@ -41,14 +41,14 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
-	github.com/fsnotify/fsnotify v1.9.0 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
+	github.com/fsnotify/fsnotify v1.10.1 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.15 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.30.3 // indirect
+	github.com/go-playground/validator/v10 v10.30.4 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
@@ -70,7 +70,7 @@ require (
 	github.com/knadh/koanf/providers/rawbytes v1.0.1 // indirect
 	github.com/knadh/koanf/providers/structs v1.0.1 // indirect
 	github.com/knadh/koanf/v2 v2.3.6 // indirect
-	github.com/leodido/go-urn v1.4.0 // indirect
+	github.com/leodido/go-urn v1.5.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/microsoft/go-mssqldb v1.11.0 // indirect
@@ -115,8 +115,6 @@ require (
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260414002931-afd174a4e478 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/ini.v1 v1.67.3 // indirect
 	modernc.org/libc v1.75.6 // indirect

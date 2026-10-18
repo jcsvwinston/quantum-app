@@ -65,7 +65,7 @@ jobs:
       # abre o actualiza el PR del bump con `gh pr create` / `gh pr edit`
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Normalizar la entrada (dispatch manual o del paraguas)
         id: entrada
